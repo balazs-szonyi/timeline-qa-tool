@@ -68,11 +68,12 @@
         penaltyScored: c=>`<svg viewBox="0 0 16 16"><path d="M3 3h10v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3z" fill="none" stroke="${c}" stroke-width="1.2"/><line x1="3" y1="3" x2="3" y2="10" stroke="${c}" stroke-width="1"/><line x1="13" y1="3" x2="13" y2="10" stroke="${c}" stroke-width="1"/><circle cx="8" cy="8.4" r="1.5" fill="${c}"/></svg>`,
         penaltyMissed: c=>ICON_SVG.penaltyScored(c),
         penaltyAwarded: c=>`<svg viewBox="0 0 16 16"><circle cx="10.4" cy="9.6" r="2.2" fill="none" stroke="${c}" stroke-width="1.2"/><path d="M10.4 7.4H6a2 2 0 1 0 0 4h.3" fill="none" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/><line x1="9" y1="4.6" x2="9.8" y2="6.1" stroke="${c}" stroke-width="1" stroke-linecap="round"/><line x1="11" y1="4.1" x2="11.2" y2="5.9" stroke="${c}" stroke-width="1" stroke-linecap="round"/><line x1="13" y1="5" x2="12.1" y2="6.3" stroke="${c}" stroke-width="1" stroke-linecap="round"/></svg>`,
-        varReview: c=>`<svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7.5" rx="1" fill="none" stroke="${c}" stroke-width="1.3"/><line x1="6" y1="13" x2="10" y2="13" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="10.5" x2="8" y2="13" stroke="${c}" stroke-width="1.3"/></svg>`,
+        varReviewStart: c=>`<svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7.5" rx="1" fill="none" stroke="${c}" stroke-width="1.3"/><line x1="6" y1="13" x2="10" y2="13" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="10.5" x2="8" y2="13" stroke="${c}" stroke-width="1.3"/></svg>`,
+        varReviewEnd: c=>ICON_SVG.varReviewStart(c),
       };
-      const ICON_COLOR = {goal:GREY,ownGoal:RED,yellowCard:ORANGE,secondYellow:null,redCard:RED,corner:RED,substitution:null,penaltyScored:GREY,penaltyMissed:RED,penaltyAwarded:GREY,varReview:GREY};
+      const ICON_COLOR = {goal:GREY,ownGoal:RED,yellowCard:ORANGE,secondYellow:null,redCard:RED,corner:RED,substitution:null,penaltyScored:GREY,penaltyMissed:RED,penaltyAwarded:GREY,varReviewStart:GREY,varReviewEnd:GREY};
       const iconHtml = t => ICON_SVG[t] ? ICON_SVG[t](ICON_COLOR[t]) : '';
-      const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'Second yellow',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty awarded',varReview:'VAR review'};
+      const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
       for(const it of hItems){const dp=Math.min(((it.minute||0)/maxMin)*100,100),top=it.team==='home';hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- 6px':'+ 6px'})">${iconHtml(it.type)}</div>`;}
       const sorted=[...items].reverse();
@@ -177,6 +178,8 @@
     .tl-qa-btn.red:hover { background: #a93226; }
     .tl-qa-btn.grey { background: #37374a; color: #ccc; }
     .tl-qa-btn.grey:hover { background: #44445a; }
+    .tl-qa-btn.purple { background: #7b2d8b; }
+    .tl-qa-btn.purple:hover { background: #6a2578; }
     .tl-qa-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
     .tl-qa-toggle input { accent-color: #ff6600; width: 15px; height: 15px; }
     select.tl-qa-input, input.tl-qa-input {
@@ -233,6 +236,9 @@
         <button class="tl-qa-btn" id="tl-inject-btn">Inject Tab</button>
         <button class="tl-qa-btn red" id="tl-clear-btn">Clear</button>
       </div>
+      <div class="tl-qa-row">
+        <button class="tl-qa-btn purple" id="tl-demo-btn" style="width:100%">🎬 Load Full Demo Match</button>
+      </div>
 
       <hr class="tl-qa-sep">
       <div class="tl-qa-label">Add incident</div>
@@ -248,10 +254,12 @@
           <option value="substitution">🔄 Substitution</option>
           <option value="penaltyScored">🥅 Penalty Scored</option>
           <option value="penaltyMissed">✖ Penalty Missed</option>
-          <option value="penaltyAwarded">⚠️ Penalty Awarded</option>
-          <option value="varReview">📺 VAR Review</option>
+          <option value="penaltyAwarded">⚠️ Penalty (awarded)</option>
+          <option value="varReviewStart">📺 VAR Review Starts</option>
+          <option value="varReviewEnd">📺 VAR Review Ends</option>
           <option value="kickOff">🟢 Kick Off</option>
           <option value="halfTime">⏸ Half Time</option>
+          <option value="secondHalfStart">▶️ Start of 2nd Half</option>
           <option value="fullTime">🏁 Full Time</option>
           <option value="injuryTime">⏱ Injury Time</option>
         </select>
@@ -322,7 +330,7 @@
   applyModeUI();
 
   // ── Dynamic form rows ──────────────────────────────────────────────────
-  const PHASES = ['kickOff','halfTime','fullTime','varReview','injuryTime'];
+  const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
   function updateRows() {
     const t = $('tl-type').value;
     const isPhase = PHASES.includes(t);
@@ -492,11 +500,49 @@
     tlUpdateCount();
   });
 
+  // ── Load full demo match ───────────────────────────────────────────────
+  // Prebuilt, realistic match covering every incident type present in the
+  // Figma timeline reference: kickOff, goal, ownGoal, yellowCard, secondYellow,
+  // redCard, corner, substitution, penaltyScored, penaltyMissed, penaltyAwarded,
+  // varReviewStart, varReviewEnd, halfTime, secondHalfStart, injuryTime, fullTime.
+  function buildFullDemoIncidents() {
+    return [
+      { type:'kickOff', team:'home', _id:1 },
+      { type:'goal', team:'home', minute:12, player:'Harry Kane', assist:'Marcus Rashford', score:'1-0', _id:2 },
+      { type:'yellowCard', team:'away', minute:23, player:'B. Cipenga', _id:3 },
+      { type:'corner', team:'home', minute:34, _id:4 },
+      { type:'varReviewStart', team:'away', minute:40, _id:5 },
+      { type:'varReviewEnd', team:'away', minute:42, _id:6 },
+      { type:'penaltyScored', team:'away', minute:43, player:'Jude Bellingham', score:'1-1', _id:7 },
+      { type:'injuryTime', team:'home', minute:45, extraMinutes:2, _id:8 },
+      { type:'halfTime', team:'home', minute:45, scoreText:'1-1', _id:9 },
+      { type:'secondHalfStart', team:'home', minute:45, _id:10 },
+      { type:'substitution', team:'away', minute:50, playerOut:'Y. Wissa', playerIn:'N. Madueke', _id:11 },
+      { type:'corner', team:'away', minute:55, _id:12 },
+      { type:'secondYellow', team:'away', minute:60, player:'N. Madueke', _id:13 },
+      { type:'ownGoal', team:'away', minute:68, player:'B. Cipenga', score:'2-1', _id:14 },
+      { type:'redCard', team:'home', minute:74, player:'Marcus Rashford', _id:15 },
+      { type:'penaltyMissed', team:'home', minute:80, player:'Harry Kane', _id:16 },
+      { type:'penaltyAwarded', team:'home', minute:84, _id:17 },
+      { type:'penaltyScored', team:'home', minute:85, player:'Harry Kane', score:'3-1', _id:18 },
+      { type:'injuryTime', team:'home', minute:90, extraMinutes:4, _id:19 },
+      { type:'fullTime', team:'home', minute:90, scoreText:'3-1', _id:20 },
+    ];
+  }
+  $('tl-demo-btn').addEventListener('click', () => {
+    if (!window._tlInjected) { tlStatus('Inject the tab first!', true); return; }
+    window._tlIncidents = buildFullDemoIncidents();
+    window._tlFilter = 'all';
+    window.tlRender();
+    tlStatus('Full demo match loaded — all incident types ✓');
+    tlUpdateCount();
+  });
+
   // ── Add incident ───────────────────────────────────────────────────────
   $('tl-add-btn').addEventListener('click', () => {
     if (!window._tlInjected) { tlStatus('Inject the tab first!', true); return; }
     const type = $('tl-type').value;
-    const PHASES = ['kickOff','halfTime','fullTime','varReview','injuryTime'];
+    const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
     const incident = { type, team: $('tl-team').value, _id: Date.now() };
     if (!PHASES.includes(type)) incident.minute = parseInt($('tl-min').value) || undefined;
     if (type === 'substitution') {
