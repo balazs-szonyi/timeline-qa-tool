@@ -27,9 +27,10 @@
       .tl-side.tl-away{justify-content:flex-start;padding-left:24px}
       .tl-minute{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#f7f7f9;color:#ff6600;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;z-index:2}
       .tl-phase{width:100%;display:flex;align-items:center;justify-content:center;background:#eeeff2;border-radius:8px;padding:4px 8px;min-height:36px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7);gap:6px}
+      .tl-phase.tl-phase-top{background:#e2e3e8;border-radius:8px 8px 0 0;padding:8px 16px}
       .tl-phase-time{color:#ff6600}
-      .tl-phase-teams{width:100%;display:flex;justify-content:space-between;align-items:center;background:#eeeff2;border-radius:8px;padding:4px 16px 4px 16px;font-size:10px;font-weight:600;color:rgba(4,4,6,.7)}
-      .tl-phase-score{font-weight:800;color:#040406;font-size:14px}
+      .tl-phase-teams{width:100%;display:flex;justify-content:space-between;align-items:center;background:#eeeff2;border-radius:0 0 4px 4px;padding:4px 16px;min-height:36px;font-size:10px;font-weight:600;color:rgba(4,4,6,.7)}
+      .tl-phase-score{font-weight:800;color:rgba(4,4,6,.87);font-size:14px;letter-spacing:1.6px}
       .tl-icon{width:24px;height:24px;border-radius:8px;border:1.5px solid #e2e3e8;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
       .tl-icon svg{width:16px;height:16px;display:block}
       .tl-content{display:flex;flex-direction:column;min-width:0}.tl-home .tl-content{align-items:flex-end;text-align:right}.tl-away .tl-content{align-items:flex-start;text-align:left}
@@ -88,8 +89,9 @@
           else if(item.type==='secondHalfStart')txt='Start of 2nd half time';
           else if(item.type==='fullTime')txt='Match ends';
           else if(item.type==='injuryTime')txt=`Injury time – ${item.extraMinutes||'?'} min added`;
-          let phaseBlock=`<div class="tl-row"><div class="tl-phase">${txt}</div></div>`;
-          if((item.type==='halfTime'||item.type==='fullTime')&&item.scoreText){
+          const hasScore=(item.type==='halfTime'||item.type==='fullTime')&&item.scoreText;
+          let phaseBlock=`<div class="tl-row"><div class="tl-phase${hasScore?' tl-phase-top':''}">${txt}</div></div>`;
+          if(hasScore){
             const parts=String(item.scoreText).split('-').map(s=>s.trim());
             const home=parts[0]||'', away=parts[1]||'';
             phaseBlock+=`<div class="tl-row"><div class="tl-phase-teams"><span>${window._tlHomeTeam||'Home'}</span><span class="tl-phase-score">${home} – ${away}</span><span>${window._tlAwayTeam||'Away'}</span></div></div>`;
@@ -106,7 +108,11 @@
             if(item.assist)body+=`<div class="tl-assist">▸ ${item.assist}</div>`;
             if(item.score){
               const sp=String(item.score).split('-').map(s=>s.trim()), h=sp[0]||'', a=sp[1]||'';
-              body+=`<div class="tl-score"><span style="font-weight:${isHome?800:600}">${h}</span> - <span style="font-weight:${!isHome?800:600}">${a}</span></div>`;
+              // Own goals credit the OPPOSITE side of the scoring player's own team, so the
+              // bolded (changed) number must follow the actual scoring side, not the item's
+              // display side (isHome), otherwise own goals highlight the wrong number.
+              const scoringSide=item.type==='ownGoal'?(isHome?'away':'home'):(isHome?'home':'away');
+              body+=`<div class="tl-score"><span style="font-weight:${scoringSide==='home'?800:600}">${h}</span> - <span style="font-weight:${scoringSide==='away'?800:600}">${a}</span></div>`;
             }
           }
           const content=`<div class="tl-content">${body}</div>`;
@@ -340,6 +346,50 @@
     return params.get('eventId') || window._tlEventId || null;
   }
 
+  // ── Auto score tracking ─────────────────────────────────────────────────
+  // Lets "Add Incident" know the running score so goal-type incidents (Goal /
+  // Own Goal / Penalty Scored) auto-compute their resulting score instead of
+  // requiring manual entry. Own goals credit the OPPOSITE side of the scoring
+  // player's own team (matches real football scoring rules).
+  function sortKey(it) { return (it.minute || 0) + (it.addedMinute || 0) / 100; }
+  function scoringSideOf(incident) {
+    return incident.type === 'ownGoal' ? (incident.team === 'home' ? 'away' : 'home') : incident.team;
+  }
+  // Inserts a new incident keeping window._tlIncidents in chronological (minute) order,
+  // so backfilling an earlier-minute incident after a later one already exists still
+  // renders in the correct time sequence.
+  function insertChronological(list, incident) {
+    const key = sortKey(incident);
+    let idx = list.length;
+    for (let i = 0; i < list.length; i++) {
+      if (sortKey(list[i]) > key) { idx = i; break; }
+    }
+    list.splice(idx, 0, incident);
+  }
+  // Score BEFORE the given moment (strictly earlier incidents only) — used to preview
+  // what a new goal-type incident's resulting score would be while filling the form.
+  function computeScoreBefore(minute, addedMinute) {
+    const list = window._tlIncidents || [];
+    const key = (minute || 0) + (addedMinute || 0) / 100;
+    let home = 0, away = 0;
+    for (const it of list) {
+      if (!GOAL_TYPES.includes(it.type) || sortKey(it) >= key) continue;
+      if (scoringSideOf(it) === 'home') home++; else away++;
+    }
+    return { home, away };
+  }
+  // Recomputes every goal-type incident's `.score` field from scratch in chronological
+  // order — keeps all score annotations correct even after a retroactive/backfilled insert.
+  function recomputeAllScores() {
+    const list = window._tlIncidents || [];
+    let home = 0, away = 0;
+    for (const it of list) {
+      if (!GOAL_TYPES.includes(it.type)) continue;
+      if (scoringSideOf(it) === 'home') home++; else away++;
+      it.score = `${home}-${away}`;
+    }
+  }
+
   // Reads the real match's team names from the event header so the vertical-timeline
   // phase rows (Half time / Match ends) show actual team names instead of literal
   // "Home"/"Away" placeholders. `.obg-event-info-participant-label` renders exactly
@@ -442,17 +492,68 @@
 
   // ── Dynamic form rows ──────────────────────────────────────────────────
   const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+
+  // ── Realistic player name auto-fill (never mixes home/away sides) ──────
+  const HOME_PLAYERS = ['Harry Kane','Marcus Rashford','Jude Bellingham','Declan Rice','Kyle Walker','Phil Foden'];
+  const AWAY_PLAYERS = ['B. Cipenga','N. Madueke','Y. Wissa','J. Timber','M. Odegaard','G. Jesus'];
+  window._tlPlayerIdx = window._tlPlayerIdx || { home: 0, away: 0 };
+  function nextPlayerName(team, exclude) {
+    const pool = team === 'away' ? AWAY_PLAYERS : HOME_PLAYERS;
+    let name, tries = 0;
+    do {
+      name = pool[window._tlPlayerIdx[team] % pool.length];
+      window._tlPlayerIdx[team]++;
+      tries++;
+    } while (name === exclude && tries <= pool.length);
+    return name;
+  }
+  function updatePlayerNames() {
+    const t = $('tl-type').value;
+    const team = $('tl-team').value || 'home';
+    if (PHASES.includes(t)) return;
+    if (t === 'substitution') {
+      const out = nextPlayerName(team);
+      $('tl-pout').value = out;
+      $('tl-pin').value  = nextPlayerName(team, out);
+    } else {
+      const player = nextPlayerName(team);
+      $('tl-player').value = player;
+      if (GOAL_TYPES.includes(t)) $('tl-assist').value = nextPlayerName(team, player);
+    }
+  }
+  function updateScorePreview() {
+    const type = $('tl-type').value;
+    const scoreInput = $('tl-score');
+    if (!scoreInput || !GOAL_TYPES.includes(type)) return;
+    const minute = parseInt($('tl-min').value) || 0;
+    const team = $('tl-team').value;
+    const before = computeScoreBefore(minute, 0);
+    const side = type === 'ownGoal' ? (team === 'home' ? 'away' : 'home') : team;
+    const after = { home: before.home, away: before.away };
+    after[side] += 1;
+    scoreInput.value = `${after.home}-${after.away}`;
+  }
   function updateRows() {
     const t = $('tl-type').value;
     const isPhase = PHASES.includes(t);
     const isSub   = t === 'substitution';
+    const isScore = GOAL_TYPES.includes(t);
     $('tl-row-base').style.display  = isPhase ? 'none' : 'flex';
-    $('tl-row-goal').style.display  = (!isPhase && !isSub) ? 'flex' : 'none';
+    // Player name is irrelevant for substitutions (Player out/in are used instead),
+    // and the assist/score row is only relevant for goal-scoring incident types
+    // (auto-computed & disabled below) — cards/corners/etc. never show it.
+    $('tl-player').style.display    = isSub ? 'none' : '';
+    $('tl-row-goal').style.display  = isScore ? 'flex' : 'none';
     $('tl-row-sub').style.display   = isSub ? 'flex' : 'none';
     $('tl-row-phase').style.display = isPhase ? 'flex' : 'none';
     $('tl-team').style.display      = (t === 'kickOff') ? 'none' : '';
+    $('tl-score').disabled = isScore;
+    if (isScore) updateScorePreview();
+    updatePlayerNames();
   }
   $('tl-type').addEventListener('change', updateRows);
+  $('tl-team').addEventListener('change', () => { updateScorePreview(); updatePlayerNames(); });
+  $('tl-min').addEventListener('input', updateScorePreview);
   updateRows();
   renderIncidentList();
 
@@ -676,18 +777,24 @@
       incident.extraMinutes = parseInt($('tl-extra').value) || undefined;
     } else {
       incident.player = $('tl-player').value.trim() || undefined;
-      incident.assist = $('tl-assist').value.trim() || undefined;
-      incident.score  = $('tl-score').value.trim()  || undefined;
+      if (GOAL_TYPES.includes(type)) {
+        incident.assist = $('tl-assist').value.trim() || undefined;
+        // .score is auto-computed by recomputeAllScores() right after chronological
+        // insertion below, so the (disabled) form value is never read directly here.
+      }
     }
     if (!window._tlIncidents) window._tlIncidents = [];
-    window._tlIncidents.push(incident);
+    insertChronological(window._tlIncidents, incident);
+    recomputeAllScores();
     window.tlRender();
     tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+"'" : ''}`);
     tlUpdateCount();
     renderIncidentList();
     syncToMatchTab(incident);
-    // Clear transient fields
+    // Clear transient fields, then re-fill with fresh auto-suggested names for next add
     ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext'].forEach(id => { const el = $(id); if(el) el.value=''; });
+    updateScorePreview();
+    updatePlayerNames();
   });
 
   // ── Drag ───────────────────────────────────────────────────────────────
