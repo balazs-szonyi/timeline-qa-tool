@@ -8,19 +8,19 @@
       #tl-tab-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;color:#5a5d70;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
       #tl-tab-btn.tl-active{color:#ff6600;border-bottom-color:#ff6600}
       #tl-panel{display:none;background:#fff;font-family:'DM Sans',sans-serif}
-      .tl-chips{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid #e2e3e8;flex-wrap:wrap}
+      .tl-chips{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap}
       .tl-chip{padding:4px 12px;border-radius:20px;border:1px solid #777a88;font-size:12px;font-weight:400;cursor:pointer;background:#fff;color:#040406;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
       .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fdfdfd}
-      .tl-hbar-wrap{padding:10px 16px 18px;border-bottom:1px solid #e2e3e8}
+      .tl-hbar-wrap{padding:24px 16px 20px}
       .tl-hbar-track{position:relative;height:4px;background:#e2e3e8;border-radius:2px}
       .tl-hbar-progress{position:absolute;left:0;top:0;height:100%;background:#40b840;border-radius:2px}
       .tl-hbar-time{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#333;color:#fdfdfd;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;font-family:inherit;z-index:3}
       .tl-hbar-markers{position:relative;height:0}
-      .tl-hbar-dot{position:absolute;left:0;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:7px;display:flex;align-items:center;justify-content:center;z-index:2}
-      .tl-hbar-dot svg{width:14px;height:14px;display:block}
+      .tl-hbar-dot{position:absolute;left:0;transform:translate(-50%,-50%);width:20px;height:20px;display:flex;align-items:center;justify-content:center;z-index:2}
+      .tl-hbar-dot svg{width:20px;height:20px;display:block}
       .tl-list{padding:16px;display:flex;flex-direction:column;row-gap:22px;position:relative}
       .tl-phase-group{display:flex;flex-direction:column;row-gap:0}
-      .tl-list::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:#e2e3e8;transform:translateX(-50%);z-index:0}
+      .tl-list::before{content:'';position:absolute;left:50%;top:16px;bottom:16px;width:1px;background:#e2e3e8;transform:translateX(-50%);z-index:0}
       .tl-row{display:flex;align-items:center;position:relative;z-index:1;min-height:24px}
       .tl-side{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
       .tl-side.tl-home{justify-content:flex-end;padding-right:24px}
@@ -31,7 +31,7 @@
       .tl-phase-teams{width:100%;display:flex;justify-content:space-between;align-items:center;background:#eeeff2;border-radius:8px;padding:4px 16px 4px 16px;font-size:10px;font-weight:600;color:rgba(4,4,6,.7)}
       .tl-phase-score{font-weight:800;color:#040406;font-size:14px}
       .tl-icon{width:24px;height:24px;border-radius:8px;border:1.5px solid #e2e3e8;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .tl-icon svg{width:15px;height:15px;display:block}
+      .tl-icon svg{width:16px;height:16px;display:block}
       .tl-content{display:flex;flex-direction:column;min-width:0}.tl-home .tl-content{align-items:flex-end;text-align:right}.tl-away .tl-content{align-items:flex-start;text-align:left}
       .tl-inc-label{font-size:14px;font-weight:600;color:#040406}
       .tl-player{font-size:12px;font-weight:400;color:rgba(4,4,6,.87)}
@@ -59,7 +59,7 @@
       const pct=curMin?Math.min((curMin/maxMin)*100,100):0;
       const GREY='#767a88', RED='#dd2727', ORANGE='#faa200', GREEN='#61aa00';
       const ICON_SVG = {
-        goal: c=>`<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="${c}"/><polygon points="8,3.3 12.3,6.4 10.6,11.3 5.4,11.3 3.7,6.4" fill="#fff"/></svg>`,
+        goal: c=>`<svg viewBox="0 0 24 24"><path fill="${c}" d="m16.93 17.12l-.8-1.36l1.46-4.37l1.41-.47l1 .75v.14c0 .07.03.13.03.19c0 1.97-.66 3.71-1.97 5.21zM9.75 15l-1.37-4.03L12 8.43l3.62 2.54L14.25 15zM12 20.03c-.88 0-1.71-.14-2.5-.42l-.69-1.51l.66-1.1h5.11l.61 1.1l-.69 1.51c-.79.28-1.62.42-2.5.42m-6.06-2.82c-.53-.62-.99-1.45-1.38-2.46c-.39-1.02-.59-1.94-.59-2.75c0-.06.03-.12.03-.19v-.14l1-.75l1.41.47l1.46 4.37l-.8 1.36zM11 5.29v1.4L7 9.46l-1.34-.42l-.42-1.36C5.68 7 6.33 6.32 7.19 5.66s1.68-1.09 2.46-1.31zm3.35-.94c.78.22 1.6.65 2.46 1.31S18.32 7 18.76 7.68l-.42 1.36l-1.34.43l-4-2.77V5.29zm-9.42.58C3 6.89 2 9.25 2 12s1 5.11 2.93 7.07S9.25 22 12 22s5.11-1 7.07-2.93S22 14.75 22 12s-1-5.11-2.93-7.07S14.75 2 12 2S6.89 3 4.93 4.93"/></svg>`,
         ownGoal: c=>ICON_SVG.goal(c),
         yellowCard: c=>`<svg viewBox="0 0 16 16"><rect x="4" y="2" width="7" height="10" rx="1.4" fill="${c}" transform="rotate(15 8 8)"/></svg>`,
         redCard: c=>ICON_SVG.yellowCard(c),
@@ -76,7 +76,7 @@
       const iconHtml = t => ICON_SVG[t] ? ICON_SVG[t](ICON_COLOR[t]) : '';
       const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
-      for(const it of hItems){const dp=Math.min(((it.minute||0)/maxMin)*100,100),top=it.team==='home';hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- 6px':'+ 6px'})">${iconHtml(it.type)}</div>`;}
+      for(const it of hItems){const dp=Math.min(((it.minute||0)/maxMin)*100,100),top=it.team==='home';hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- 8px':'+ 8px'})">${iconHtml(it.type)}</div>`;}
       const sorted=[...items].reverse();
       const visible=filter==='all'?sorted:filter==='goals'?sorted.filter(i=>PHASES.includes(i.type)||GOALS.includes(i.type)):filter==='cards'?sorted.filter(i=>PHASES.includes(i.type)||CARDS.includes(i.type)):filter==='corners'?sorted.filter(i=>PHASES.includes(i.type)||i.type==='corner'):sorted;
       let rows='';
@@ -339,6 +339,20 @@
     const params = new URLSearchParams(location.search);
     return params.get('eventId') || window._tlEventId || null;
   }
+
+  // Reads the real match's team names from the event header so the vertical-timeline
+  // phase rows (Half time / Match ends) show actual team names instead of literal
+  // "Home"/"Away" placeholders. `.obg-event-info-participant-label` renders exactly
+  // two elements in DOM order: home team first, away team second.
+  function detectTeamNames() {
+    try {
+      const els = document.querySelectorAll('.obg-event-info-participant-label');
+      if (els.length >= 2) {
+        window._tlHomeTeam = els[0].textContent.trim();
+        window._tlAwayTeam = els[1].textContent.trim();
+      }
+    } catch (e) { /* non-fatal, falls back to 'Home'/'Away' */ }
+  }
   function syncToMatchTab(incident) {
     try {
       if (!window.obgRt || typeof window.obgRt.injectMessage !== 'function') {
@@ -582,6 +596,7 @@
       panelHostEl.appendChild(tlPanel);
     }
 
+    detectTeamNames();
     window.tlRender();
     $('tl-inject-btn').textContent = isDemo ? '✓ Demo injected' : '✓ Tab injected';
     tlStatus(isDemo ? 'Demo tab injected ✓' : 'Tab injected ✓');
@@ -637,6 +652,7 @@
   }
   $('tl-demo-btn').addEventListener('click', () => {
     if (!window._tlInjected) { tlStatus('Inject the tab first!', true); return; }
+    detectTeamNames();
     window._tlIncidents = buildFullDemoIncidents();
     window._tlFilter = 'all';
     window.tlRender();
