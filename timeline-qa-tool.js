@@ -170,18 +170,37 @@
  * IMPORTANT — this tool is NOT wired to the real deployed Timeline feature:
  * the real Angular component is `sbb2b-match-timeline-container`
  * (libs/betting/match-timeline/src/match-timeline/match-timeline.container.ts),
- * fed by NgRx selectors (ScoreboardSelector.getGameStatistics /
- * EventPageSchemaSelector.getTimelineSchema) — NOT by window._tlIncidents/window.tlRender.
- * Injecting this tool never touches or overrides that real component's DOM/CSS/data; it
+ * currently still using MOCK_FOOTBALL_TIMELINE_DATA (real store wiring not yet built).
+ *
+ * CONFIRMED real domain contract (SBEUJE-6121, merged PR #20266, "SDK ticket, no
+ * UI-reflected changes" — nothing to click-test in browser for that ticket):
+ *   Input:  EventStatistic (libs/betting/ngx.sportsbook/.../game-statistic.model.ts)
+ *     { reference, relReference?, eventPeriodId, minute, second, participantId,
+ *       participantUsage: ParticipantUsage, gameResultTypeName, gameResultTypeId,
+ *       gameResultValue: string /* raw passthrough, e.g. score "1-0" or injury mins "4" *\/,
+ *       status: EventStatisticStatus }
+ *   Pure mapper: TimelineUtil.mapEventStatisticsToTimeline(stats, schema): TimelineItem[]
+ *     (libs/betting/match-timeline/src/util/timeline.util.ts) — filters to schema-mapped +
+ *     Active/non-cancelled stats, groups children by relReference, sorts by minute/second.
+ *   Output: TimelineItem
+ *     { id, relReference?, minute, second, eventPeriodId, type, team: 'home'|'away',
+ *       label, iconKey, gameResultTypeId, gameResultValue, children: TimelineItem[] }
+ *   NOTE: no separate playerName/assistName/cardType metadata fields exist in the shipped
+ *   model — assist/sub relationships are nested TimelineItem `children` via relReference,
+ *   and card type / player name are expected to live in the raw `gameResultValue` passthrough.
+ *   Our tool's mock incidents (flat player/assist/addedMinute fields) intentionally do NOT
+ *   match this shape yet — this is a known gap to close once the consuming UI/selector
+ *   tickets (SBEUJE-6123 selector, SBEUJE-6552/6592 components) are deployed and the real
+ *   data flow can be observed end-to-end.
+ *
+ * Injecting this tool never touches or overrides the real component's DOM/CSS/data; it
  * only ever renders through our own `_tqInstallTlRender`. The inject button refuses to run
  * (with a warning) if `sbb2b-match-timeline-container` is already present on the page, so this
  * mock can't be mistaken for — or run alongside — the real feature once it's deployed.
- * Once the real feature ships, this tool must be re-evaluated/rebuilt against its actual
- * data source before "Data only" mode can be trusted as a real QA signal.
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.18';
+  const TL_TOOL_VERSION = 'v0.1.19';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
