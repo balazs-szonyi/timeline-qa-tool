@@ -386,13 +386,17 @@
 
     const isDemo = window._tqMode === 'demo';
 
-    // Scope to the actual event/match market tab bar (`obg-m-event-market-tabs-container`),
+    // Scope to the actual event "main" tab bar (`obg-m-event-main-tabs-container`, the
+    // Match / Statistics / Stream / Player stats row) — per Figma (node 12367-423068) the
+    // Timeline tab belongs in THIS tab bar, not the betting-markets tab bar
+    // (`obg-m-event-market-tabs-container`, "All / Popular / Goals / Halves / Corners"),
+    // which is a separate widget entirely and was being mistakenly targeted before.
     // NOT just "first [test-id=scroller-content] in the document" — on competition/listing
     // pages (e.g. .../italian-serie-a?...&tab=liveAndUpcoming) an unrelated competition-level
     // nav tab bar ("Matches | Outrights | Standings") renders *before* the event's own tab bar
     // in DOM order and would otherwise be picked instead, silently injecting our Timeline tab
     // into the wrong place on the page (looks like nothing happened).
-    const scrollerEl = document.querySelector('obg-m-event-market-tabs-container [test-id="scroller-content"]')
+    const scrollerEl = document.querySelector('obg-m-event-main-tabs-container [test-id="scroller-content"]')
       || document.querySelector('[test-id="scroller-content"]');
     const panelHostEl = findVisiblePanelContent(scrollerEl);
     if (!scrollerEl || !panelHostEl) {
