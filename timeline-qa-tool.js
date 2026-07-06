@@ -46,7 +46,12 @@
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
+  // Guard: never clobber a pre-existing `window.tlRender` that isn't our own — if some
+  // other script (e.g. a future real integration hook) already defined it, back off instead
+  // of silently overwriting it, so this mock tool can never masquerade as real rendered output.
   window._tqInstallTlRender = function() {
+    if (window.tlRender && !window._tqOwnRender) return;
+    window._tqOwnRender = true;
     window.tlSetFilter = function(f) { window._tlFilter=f; window.tlRender(); };
     window.tlRender = function() {
       const p = document.getElementById('tl-panel');
@@ -158,13 +163,25 @@
   }
 })();/**
  * Timeline QA Tool v2 — Injectable bookmarklet (mode toggle edition)
- * Two modes:
- *  - Data only: populates window._tlIncidents, calls tlRender() if deployed code provides it
+ * Two modes (both are our OWN mock renderer — see IMPORTANT note below):
+ *  - Data only: same mock tab/panel as Demo, but skips our demo CSS injection
  *  - Demo:      full mock tab+panel+CSS injection — shows how Timeline should look
+ *
+ * IMPORTANT — this tool is NOT wired to the real deployed Timeline feature:
+ * the real Angular component is `sbb2b-match-timeline-container`
+ * (libs/betting/match-timeline/src/match-timeline/match-timeline.container.ts),
+ * fed by NgRx selectors (ScoreboardSelector.getGameStatistics /
+ * EventPageSchemaSelector.getTimelineSchema) — NOT by window._tlIncidents/window.tlRender.
+ * Injecting this tool never touches or overrides that real component's DOM/CSS/data; it
+ * only ever renders through our own `_tqInstallTlRender`. The inject button refuses to run
+ * (with a warning) if `sbb2b-match-timeline-container` is already present on the page, so this
+ * mock can't be mistaken for — or run alongside — the real feature once it's deployed.
+ * Once the real feature ships, this tool must be re-evaluated/rebuilt against its actual
+ * data source before "Data only" mode can be trusted as a real QA signal.
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.17';
+  const TL_TOOL_VERSION = 'v0.1.18';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -520,7 +537,7 @@
     $('tl-mode-demo').classList.toggle('active', isDemo);
     $('tl-qa-mode-desc').textContent = isDemo
       ? 'Full mock tab+CSS injected — shows how Timeline should look'
-      : 'Injects incidents only — deployed code renders';
+      : 'Mock tab, unstyled — NOT wired to real deployed code (pre-release only)';
     $('tl-inject-btn').textContent = window._tlInjected
       ? (isDemo ? '✓ Demo injected' : '✓ Data ready')
       : (isDemo ? 'Inject Demo Tab' : 'Inject Data Mode');
@@ -636,6 +653,18 @@
   $('tl-inject-btn').addEventListener('click', () => {
     if (window._tlInjected) { tlStatus('Already injected'); return; }
 
+    // Guard: refuse to inject our mock Timeline tab if the REAL deployed feature
+    // (Angular component `sbb2b-match-timeline-container`, per libs/betting/match-timeline)
+    // is already present on the page. Our mock tool intentionally does NOT hook into the
+    // real component's NgRx data (window._tlIncidents/window.tlRender are our own globals,
+    // unrelated to the real ScoreboardSelector.getGameStatistics/EventPageSchemaSelector.getTimelineSchema
+    // pipeline) — injecting alongside it would create a confusing duplicate tab and any
+    // "test result" from our mock would NOT reflect the real implementation's behaviour.
+    if (document.querySelector('sbb2b-match-timeline-container')) {
+      tlStatus('⚠ Real Timeline feature detected on this page (sbb2b-match-timeline-container) — this mock tool is for pre-release QA only and must not be used once the real feature is deployed here', true);
+      return;
+    }
+
     const isDemo = window._tqMode === 'demo';
 
     // Scope to the actual event "main" tab bar (`obg-m-event-main-tabs-container`, the
@@ -670,6 +699,7 @@
 
     if (isDemo) window._tqInjectDemoStyles();
     window._tqInstallTlRender();
+
 
     // Tab button (same for both modes)
     if (!document.getElementById('tl-tab-btn')) {
