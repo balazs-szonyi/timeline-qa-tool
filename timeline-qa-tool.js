@@ -118,11 +118,11 @@
       for(const item of visible){
         if(PHASES.includes(item.type)){
           let txt='';
-          if(item.type==='kickOff')txt='Kick off';
+          if(item.type==='kickOff')txt='Kick Off';
           else if(item.type==='halfTime')txt='Half time';
           else if(item.type==='secondHalfStart')txt='Start of 2nd half time';
           else if(item.type==='fullTime')txt='Match ends';
-          else if(item.type==='injuryTime')txt=`Injury time – ${item.extraMinutes||'?'} min added`;
+          else if(item.type==='injuryTime')txt=`Injury Time - ${item.extraMinutes||'?'} min added`;
           const hasScore=(item.type==='halfTime'||item.type==='fullTime')&&item.scoreText;
           let phaseBlock=`<div class="tl-row"><div class="tl-phase${hasScore?' tl-phase-top':''}">${txt}</div></div>`;
           if(hasScore){
@@ -136,10 +136,10 @@
           const isHome=item.team==='home';
           const icon=`<div class="tl-icon">${iconHtml(item.type)}</div>`;
           let body=`<div class="tl-inc-label">${LABEL[item.type]||item.type}</div>`;
-          if(item.type==='substitution'){body+=`<span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span> <span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span>`;}
+          if(item.type==='substitution'){body+=`<span class="tl-sub-out"><span class="tl-sub-arrow">↑</span> ${item.playerOut||'—'}</span> <span class="tl-sub-in"><span class="tl-sub-arrow">↓</span> ${item.playerIn||'—'}</span>`;}
           else{
             if(item.player)body+=`<div class="tl-player">${item.player}</div>`;
-            if(item.assist)body+=`<div class="tl-assist">▸ ${item.assist}</div>`;
+            if(item.assist)body+=`<div class="tl-assist">(Assist: ${item.assist})</div>`;
             if(item.score){
               const sp=String(item.score).split('-').map(s=>s.trim()), h=sp[0]||'', a=sp[1]||'';
               // Own goals credit the OPPOSITE side of the scoring player's own team, so the
@@ -193,6 +193,28 @@
  *   tickets (SBEUJE-6123 selector, SBEUJE-6552/6592 components) are deployed and the real
  *   data flow can be observed end-to-end.
  *
+ * CONFIRMED real vertical-timeline structure (SBEUJE-6552/6592, merged PR #20266,
+ * libs/betting/match-timeline/src/vertical-timeline/): generic obg-vertical-timeline
+ * component with a center spine line; each incident has direction: 'left'|'right'|'full'
+ * (left≈home, right≈away, full spans across — e.g. Kick Off/Half Time/Match Ends/VAR/
+ * Injury Time notices). This matches our tool's existing home-left/away-right/phase-full
+ * layout conceptually. Per-incident component contract (FootballTimelineIncidentData):
+ *   { time, direction, icon, title, oldScore?, newScore?: {isHighlighted?,goal}, player?,
+ *     assist?, substitute?: {in,out}, message?: {messageTitle, teamHome, teamAway, notify?:
+ *     {text, suffix?}}, review?: {reason} }
+ * Confirmed exact rendering conventions applied to our mock (v0.1.20):
+ *   - Assist shown as "(Assist: Name)", not a bullet-prefixed line.
+ *   - Substitution always shows OUT player first with ↑, then IN player with ↓ (fixed order,
+ *     not team/side dependent) — our tool previously had this reversed.
+ *   - Notify-type phase text uses a plain hyphen separator, e.g. "Injury Time - 3 min added",
+ *     "Kick Off" (capitalized), matching MOCK_FOOTBALL_TIMELINE_DATA in
+ *     football-timeline-temp-metadata.mock.ts exactly.
+ * Per that mock file's own header comment: "temporary mock data... to be used before real
+ * data is available... will be removed once real data is integrated" — i.e. even the real
+ * component ships with hardcoded mock data today, reinforcing that end-to-end real-data
+ * testing isn't possible yet for any of these tickets (SBEUJE-6552/6592/6120/6118 dev
+ * comments all independently confirm this: "no real data integration yet").
+ *
  * Injecting this tool never touches or overrides the real component's DOM/CSS/data; it
  * only ever renders through our own `_tqInstallTlRender`. The inject button refuses to run
  * (with a warning) if `sbb2b-match-timeline-container` is already present on the page, so this
@@ -200,7 +222,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.19';
+  const TL_TOOL_VERSION = 'v0.1.20';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
