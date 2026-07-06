@@ -15,7 +15,7 @@
       .tl-hbar-track{position:relative;height:4px;background:#e2e3e8;border-radius:2px}
       .tl-hbar-progress{position:absolute;left:0;top:0;height:100%;background:#40b840;border-radius:2px}
       .tl-hbar-time{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#333;color:#fdfdfd;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;font-family:inherit;z-index:3}
-      .tl-hbar-markers{position:relative;height:0}
+      .tl-hbar-markers{position:absolute;inset:0}
       .tl-hbar-dot{position:absolute;left:0;transform:translate(-50%,-50%);width:20px;height:20px;display:flex;align-items:center;justify-content:center;z-index:2}
       .tl-hbar-dot svg{width:20px;height:20px;display:block}
       .tl-list{padding:16px;display:flex;flex-direction:column;row-gap:22px;position:relative}
@@ -135,6 +135,8 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
+  const TL_TOOL_VERSION = 'v0.1.14';
+  window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
     ep.style.display = ep.style.display === 'none' ? 'flex' : 'none';
@@ -160,7 +162,12 @@
       padding: 10px 14px; background: #12122a; border-radius: 10px 10px 0 0;
       cursor: move; border-bottom: 1px solid #333;
     }
+    #tl-qa-header-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    #tl-qa-header-title { display: flex; align-items: baseline; gap: 6px; }
     #tl-qa-header span { font-weight: 700; font-size: 13px; color: #ff6600; }
+    #tl-qa-version { font-weight: 600; font-size: 10px; color: #888; }
+    #tl-qa-email { font-size: 10px; color: #888; text-decoration: none; }
+    #tl-qa-email:hover { color: #ff6600; text-decoration: underline; }
     #tl-qa-close {
       background: none; border: none; color: #888; cursor: pointer;
       font-size: 16px; padding: 0 4px; line-height: 1;
@@ -223,7 +230,10 @@
   panel.id = 'tl-qa-panel';
   panel.innerHTML = `
     <div id="tl-qa-header">
-      <span>⏱ Timeline QA</span>
+      <div id="tl-qa-header-info">
+        <div id="tl-qa-header-title"><span>⏱ Timeline QA</span><span id="tl-qa-version">${TL_TOOL_VERSION}</span></div>
+        <a id="tl-qa-email" href="mailto:balazs.szonyi@betssongroup.com">balazs.szonyi@betssongroup.com</a>
+      </div>
       <button id="tl-qa-close">✕</button>
     </div>
     <div id="tl-qa-body">
