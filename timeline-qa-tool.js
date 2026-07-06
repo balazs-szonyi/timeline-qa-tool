@@ -19,6 +19,7 @@
       .tl-hbar-dot{position:absolute;left:0;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:7px;display:flex;align-items:center;justify-content:center;z-index:2}
       .tl-hbar-dot svg{width:14px;height:14px;display:block}
       .tl-list{padding:16px;display:flex;flex-direction:column;row-gap:22px;position:relative}
+      .tl-phase-group{display:flex;flex-direction:column;row-gap:0}
       .tl-list::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:#e2e3e8;transform:translateX(-50%);z-index:0}
       .tl-row{display:flex;align-items:center;position:relative;z-index:1;min-height:24px}
       .tl-side{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
@@ -87,12 +88,13 @@
           else if(item.type==='secondHalfStart')txt='Start of 2nd half time';
           else if(item.type==='fullTime')txt='Match ends';
           else if(item.type==='injuryTime')txt=`Injury time – ${item.extraMinutes||'?'} min added`;
-          rows+=`<div class="tl-row"><div class="tl-phase">${txt}</div></div>`;
+          let phaseBlock=`<div class="tl-row"><div class="tl-phase">${txt}</div></div>`;
           if((item.type==='halfTime'||item.type==='fullTime')&&item.scoreText){
             const parts=String(item.scoreText).split('-').map(s=>s.trim());
             const home=parts[0]||'', away=parts[1]||'';
-            rows+=`<div class="tl-row"><div class="tl-phase-teams"><span>${window._tlHomeTeam||'Home'}</span><span class="tl-phase-score">${home} – ${away}</span><span>${window._tlAwayTeam||'Away'}</span></div></div>`;
+            phaseBlock+=`<div class="tl-row"><div class="tl-phase-teams"><span>${window._tlHomeTeam||'Home'}</span><span class="tl-phase-score">${home} – ${away}</span><span>${window._tlAwayTeam||'Away'}</span></div></div>`;
           }
+          rows+=`<div class="tl-phase-group">${phaseBlock}</div>`;
         }
         else{
           const isHome=item.team==='home';
@@ -108,7 +110,8 @@
             }
           }
           const content=`<div class="tl-content">${body}</div>`;
-          const minute=`<div class="tl-minute">${item.minute||''}'</div>`;
+          const minuteTxt=`${item.minute||''}${item.addedMinute?'+'+item.addedMinute:''}`;
+          const minute=`<div class="tl-minute">${minuteTxt}'</div>`;
           const homeSide=`<div class="tl-side tl-home">${isHome?content+icon:''}</div>`;
           const awaySide=`<div class="tl-side tl-away">${!isHome?icon+content:''}</div>`;
           rows+=`<div class="tl-row">${homeSide}${minute}${awaySide}</div>`;
@@ -519,6 +522,7 @@
       { type:'varReviewEnd', team:'away', minute:42, _id:6 },
       { type:'penaltyScored', team:'away', minute:43, player:'Jude Bellingham', score:'1-1', _id:7 },
       { type:'injuryTime', team:'home', minute:45, extraMinutes:2, _id:8 },
+      { type:'yellowCard', team:'home', minute:45, addedMinute:1, player:'Declan Rice', _id:8.5 },
       { type:'halfTime', team:'home', minute:45, scoreText:'1-1', _id:9 },
       { type:'secondHalfStart', team:'home', minute:45, _id:10 },
       { type:'substitution', team:'away', minute:50, playerOut:'Y. Wissa', playerIn:'N. Madueke', _id:11 },
@@ -530,7 +534,8 @@
       { type:'penaltyAwarded', team:'home', minute:84, _id:17 },
       { type:'penaltyScored', team:'home', minute:85, player:'Harry Kane', score:'3-1', _id:18 },
       { type:'injuryTime', team:'home', minute:90, extraMinutes:4, _id:19 },
-      { type:'fullTime', team:'home', minute:90, scoreText:'3-1', _id:20 },
+      { type:'goal', team:'away', minute:90, addedMinute:2, player:'B. Cipenga', assist:'N. Madueke', score:'3-2', _id:19.5 },
+      { type:'fullTime', team:'home', minute:90, scoreText:'3-2', _id:20 },
     ];
   }
   $('tl-demo-btn').addEventListener('click', () => {
