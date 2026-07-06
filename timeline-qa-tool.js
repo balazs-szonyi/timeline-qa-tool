@@ -197,6 +197,12 @@
     }
     #tl-qa-status.err { background: #4a1c1c; color: #f5a0a0; font-weight: 600; border: 1px solid #c0392b; }
     #tl-qa-count { font-size: 11px; color: #888; text-align: center; }
+    #tl-qa-inc-list { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .tl-qa-inc-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 8px; background: #24243a; border-radius: 4px; font-size: 11px; }
+    .tl-qa-inc-row-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .tl-qa-inc-remove { background: none; border: none; color: #f5a0a0; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; flex: none; }
+    .tl-qa-inc-remove:hover { color: #fff; }
+    .tl-qa-inc-empty { font-size: 11px; color: #666; text-align: center; padding: 6px; }
     .tl-tab-indicator {
       position: absolute; left: 8px; right: 8px; bottom: 0; height: 4px;
       background: #ff6600; border-radius: 2px 2px 0 0;
@@ -294,6 +300,10 @@
 
       <button class="tl-qa-btn green" id="tl-add-btn" style="width:100%">＋ Add Incident</button>
 
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-label">Injected incidents</div>
+      <div id="tl-qa-inc-list"></div>
+
       <div id="tl-qa-status"></div>
       <div id="tl-qa-count"></div>
     </div>
@@ -315,6 +325,90 @@
     const n = (window._tlIncidents || []).length;
     $('tl-qa-count').textContent = n > 0 ? `${n} incident${n !== 1 ? 's' : ''} injected` : '';
   }
+
+  // ── Match tab sync ───────────────────────────────────────────────────────
+  // Mirrors the Sportsbook Tool's real RT-scoreboard mechanism so manually-added
+  // incidents also reflect on the real "Match" tab, exactly like editing score/red
+  // cards in the Sportsbook Tool does. Only Goal/OwnGoal/PenaltyScored (score),
+  // RedCard (red card count), and phase changes are pushed — the real system has
+  // no live-update path for yellow cards/corners/subs/VAR/penalty-awarded/missed,
+  // so those intentionally do not sync (same limitation as the Sportsbook Tool).
+  const GOAL_TYPES = ['goal', 'ownGoal', 'penaltyScored'];
+  const PHASE_SYNC_LABELS = { kickOff: 'Kick off', halfTime: 'Half time', secondHalfStart: '2nd half', fullTime: 'Match ends' };
+  function getEventIdFromPage() {
+    const params = new URLSearchParams(location.search);
+    return params.get('eventId') || window._tlEventId || null;
+  }
+  function syncToMatchTab(incident) {
+    try {
+      if (!window.obgRt || typeof window.obgRt.injectMessage !== 'function') {
+        tlStatus('Match tab sync skipped — obgRt not exposed (run Sportsbook Tool Expose first)', true);
+        return;
+      }
+      const eventId = getEventIdFromPage();
+      if (!eventId) { tlStatus('Match tab sync skipped — event id not found in URL', true); return; }
+      const state = window.xSbState || window.obgState;
+      const sb = state && state.sportsbook && state.sportsbook.scoreboard && state.sportsbook.scoreboard[eventId];
+      if (!sb) { tlStatus('Match tab sync skipped — scoreboard state not found for this event', true); return; }
+      const homeId = sb.participants[0].id, awayId = sb.participants[1].id;
+      const stats = sb.statistics;
+
+      if (GOAL_TYPES.includes(incident.type) && incident.score) {
+        const parts = String(incident.score).split('-').map(s => parseInt(s.trim(), 10));
+        const h = parts[0], a = parts[1];
+        if (!isNaN(h) && !isNaN(a)) {
+          stats[homeId].goalsScored.value = h;
+          stats[awayId].goalsScored.value = a;
+          window.obgRt.injectMessage({ id: eventId, t: 41, d: { spp: { [homeId]: h, [awayId]: a }, st: stats, cvs: 0 } });
+          tlStatus('Match tab score synced ✓');
+        }
+        return;
+      }
+      if (incident.type === 'redCard') {
+        const teamId = incident.team === 'home' ? homeId : awayId;
+        stats[teamId].redCards.value = (stats[teamId].redCards.value || 0) + 1;
+        const homeScore = stats[homeId].goalsScored.value || 0, awayScore = stats[awayId].goalsScored.value || 0;
+        window.obgRt.injectMessage({ id: eventId, t: 41, d: { spp: { [homeId]: homeScore, [awayId]: awayScore }, st: stats, cvs: 0 } });
+        tlStatus('Match tab red card synced ✓');
+        return;
+      }
+      if (PHASE_SYNC_LABELS[incident.type] && typeof window.obgRt.setGamePhase === 'function') {
+        window.obgRt.setGamePhase(eventId, { id: incident.type, label: PHASE_SYNC_LABELS[incident.type] });
+        tlStatus('Match tab phase synced ✓');
+      }
+    } catch (err) {
+      tlStatus('Match tab sync error: ' + err.message, true);
+    }
+  }
+
+  // ── Injected-incidents list (manual removal) ────────────────────────────
+  const PHASE_TYPES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+  function renderIncidentList() {
+    const container = $('tl-qa-inc-list');
+    if (!container) return;
+    const items = window._tlIncidents || [];
+    if (!items.length) { container.innerHTML = '<div class="tl-qa-inc-empty">No incidents yet</div>'; return; }
+    container.innerHTML = items.map(item => {
+      const opt = document.querySelector(`#tl-type option[value="${item.type}"]`);
+      const label = opt ? opt.textContent : item.type;
+      const minTxt = item.minute ? ` ${item.minute}${item.addedMinute ? '+' + item.addedMinute : ''}'` : '';
+      const teamTxt = (item.team && !PHASE_TYPES.includes(item.type)) ? ` (${item.team})` : '';
+      return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}</span><button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
+    }).join('');
+  }
+  $('tl-qa-inc-list').addEventListener('click', e => {
+    const btn = e.target.closest('.tl-qa-inc-remove');
+    if (!btn) return;
+    window.tlRemoveIncident(btn.dataset.id);
+  });
+  window.tlRemoveIncident = function(id) {
+    if (!window._tlIncidents) return;
+    window._tlIncidents = window._tlIncidents.filter(it => String(it._id) !== String(id));
+    if (window.tlRender) window.tlRender();
+    renderIncidentList();
+    tlUpdateCount();
+    tlStatus('Incident removed');
+  };
 
   // ── Mode toggle ────────────────────────────────────────────────────────
   function applyModeUI() {
@@ -346,6 +440,7 @@
   }
   $('tl-type').addEventListener('change', updateRows);
   updateRows();
+  renderIncidentList();
 
   // ── Feature flag ───────────────────────────────────────────────────────
   // Read current value on init
@@ -491,6 +586,7 @@
     $('tl-inject-btn').textContent = isDemo ? '✓ Demo injected' : '✓ Tab injected';
     tlStatus(isDemo ? 'Demo tab injected ✓' : 'Tab injected ✓');
     tlUpdateCount();
+    renderIncidentList();
   });
 
   // ── Clear ──────────────────────────────────────────────────────────────
@@ -505,6 +601,7 @@
     $('tl-inject-btn').textContent = window._tqMode === 'demo' ? 'Inject Demo Tab' : 'Inject Tab';
     tlStatus('All incidents cleared');
     tlUpdateCount();
+    renderIncidentList();
   });
 
   // ── Load full demo match ───────────────────────────────────────────────
@@ -545,6 +642,7 @@
     window.tlRender();
     tlStatus('Full demo match loaded — all incident types ✓');
     tlUpdateCount();
+    renderIncidentList();
   });
 
   // ── Add incident ───────────────────────────────────────────────────────
@@ -570,6 +668,8 @@
     window.tlRender();
     tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+"'" : ''}`);
     tlUpdateCount();
+    renderIncidentList();
+    syncToMatchTab(incident);
     // Clear transient fields
     ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext'].forEach(id => { const el = $(id); if(el) el.value=''; });
   });
