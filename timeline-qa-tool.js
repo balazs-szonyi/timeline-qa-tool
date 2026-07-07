@@ -7,7 +7,7 @@
     s.textContent = `
       #tl-tab-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;color:#5a5d70;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
       #tl-tab-btn.tl-active{color:#ff6600;border-bottom-color:#ff6600}
-      #tl-panel{display:none;background:#fff;font-family:'DM Sans',sans-serif}
+      #tl-panel{display:none;background:#f7f7f9;font-family:'DM Sans',sans-serif}
       .tl-chips{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap}
       .tl-chip{padding:4px 12px;border-radius:20px;border:1px solid #777a88;font-size:12px;font-weight:400;cursor:pointer;background:#fff;color:#040406;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
       .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fdfdfd}
@@ -76,13 +76,29 @@
       // of their half instead of scaling proportionally — this keeps them from landing under the time badge.
       const INJURY_ZONE=10, ZONE_PAD=INJURY_ZONE*0.15;
       const normalW1=50-INJURY_ZONE, normalW2=50-INJURY_ZONE;
-      function rankInjuryPositions(list,base){
+      // The half-time injury zone (inj1) sits immediately left of the centered live badge. Its reserved
+      // width is a *percentage* of the track, but the badge itself (and each dot icon) has a *fixed pixel*
+      // footprint — on a narrow track (e.g. narrow browser viewport on the "eti=1" fullscreen layout) that
+      // same percentage maps to fewer px than the badge needs, so the closest injury-1 dot ends up drawn
+      // right under the badge (reported bug). Clamp each injury-1 dot's centre, in px, so it can never sit
+      // closer to the track's midpoint than the badge's own left edge (plus a small gap) allows, regardless
+      // of how narrow the track is.
+      const trackWidthPx=Math.max((p.clientWidth||0)-32,120);
+      const badgeWidthPx=String(curMinDisplay+':00').length*6.5+14;
+      const dotHalfWidthPx=10, gapPx=6;
+      const maxInj1CenterPct=50-((badgeWidthPx/2+dotHalfWidthPx+gapPx)/trackWidthPx*100);
+      function rankInjuryPositions(list,base,clampMaxPct){
         const sortedList=[...list].sort((a,b)=>(a.addedMinute||0)-(b.addedMinute||0));
         const n=sortedList.length, map=new Map();
-        sortedList.forEach((it,idx)=>{const frac=n>1?idx/(n-1):0.5;map.set(it,base+ZONE_PAD+frac*(INJURY_ZONE-2*ZONE_PAD));});
+        sortedList.forEach((it,idx)=>{
+          const frac=n>1?idx/(n-1):0.5;
+          let pos=base+ZONE_PAD+frac*(INJURY_ZONE-2*ZONE_PAD);
+          if(clampMaxPct!=null) pos=Math.min(pos,clampMaxPct);
+          map.set(it,pos);
+        });
         return map;
       }
-      const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===45&&(it.addedMinute||0)>0),50-INJURY_ZONE);
+      const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===45&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
       const inj2Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===90&&(it.addedMinute||0)>0),100-INJURY_ZONE);
       const GREY='#767a88', RED='#dd2727', ORANGE='#faa200', GREEN='#61aa00';
       const ICON_SVG = {
