@@ -31,8 +31,8 @@
       .tl-phase-icon{width:16px;height:16px;display:inline-flex;flex-shrink:0}
       .tl-phase-icon svg{width:100%;height:100%;display:block}
       .tl-phase-score-inline{font-weight:800;color:rgba(4,4,6,.87)}
-      .tl-phase.tl-phase-title{border-radius:8px 8px 0 0}
-      .tl-phase-scoreline{width:100%;display:flex;align-items:center;justify-content:space-between;background:#eeeff2;border-top:1px solid #e2e3e8;border-radius:0 0 8px 8px;padding:10px 16px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
+      .tl-phase.tl-phase-title{border-radius:8px 8px 0 0;background:#e2e3e8}
+      .tl-phase-scoreline{width:100%;display:flex;align-items:center;justify-content:space-between;background:#eeeff2;border-radius:0 0 8px 8px;padding:10px 16px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
       .tl-phase-scoreline .tl-phase-team{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .tl-phase-scoreline .tl-phase-team.tl-away-team{text-align:right}
       .tl-phase-scoreline .tl-phase-score{flex-shrink:0;padding:0 12px;font-size:14px;font-weight:800;color:rgba(4,4,6,.87)}
@@ -260,7 +260,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.21';
+  const TL_TOOL_VERSION = 'v0.1.22';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
