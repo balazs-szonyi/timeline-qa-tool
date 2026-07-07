@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.37';
+  const TL_TOOL_VERSION = 'v0.1.38';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -534,7 +534,10 @@
             </label>
             <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
           </div>
-          <div style="font-size:10px;color:#999;padding:0 2px">In-memory only — does NOT survive a reload. The real Timeline tab (event-main-tabs.container.ts) only reads this flag once, at component construction, so a reload is needed to see it take effect there — but reload also re-fetches the actual environment value, discarding this override.</div>
+          <details class="tl-qa-details">
+            <summary>ⓘ Why do I need a reload — and how does it survive one?</summary>
+            <div>In-memory only by itself — does NOT survive a reload. The real Timeline tab (event-main-tabs.container.ts) only reads this flag once, at component construction, so a reload is needed to see it take effect there — but a plain reload also re-fetches the actual environment value, discarding this override. Use the "Auto-persist across REAL reloads" helper below to make it stick.</div>
+          </details>
           <div class="tl-qa-row">
             <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
           </div>
