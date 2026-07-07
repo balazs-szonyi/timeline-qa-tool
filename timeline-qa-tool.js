@@ -236,6 +236,20 @@
       const sorted=[...items].reverse();
       const visible=filter==='all'?sorted:filter==='goals'?sorted.filter(i=>PHASES.includes(i.type)||GOALS.includes(i.type)):filter==='cards'?sorted.filter(i=>PHASES.includes(i.type)||CARDS.includes(i.type)):filter==='corners'?sorted.filter(i=>PHASES.includes(i.type)||i.type==='corner'):sorted;
       let rows='';
+      // Half time/Match ends scorelines are derived LIVE from the actual goal incidents
+      // instead of trusting the phase incident's own hand-typed scoreText field — this
+      // way test data stays internally consistent even when a goal is injected/edited
+      // after a fullTime incident already exists (a scenario that can't happen for real,
+      // but looked broken in QA when the vertical timeline showed a newer score while
+      // "Match ends" still showed a stale one). Half time only counts goals up to its own
+      // minute; Match ends always reflects the single latest goal, whenever it was added.
+      const scoreEvents=items.filter(i=>i.score).slice().sort((a,b)=>(a.minute||0)-(b.minute||0)||(a.addedMinute||0)-(b.addedMinute||0));
+      function tlScoreAsOf(minuteLimit,useLatest){
+        if(useLatest) return scoreEvents.length?scoreEvents[scoreEvents.length-1].score:null;
+        let last=null;
+        for(const e of scoreEvents){ if((e.minute||0)<=minuteLimit) last=e.score; else break; }
+        return last;
+      }
       // Per the "VAR incident without team data" Figma case: a VAR review start/end that
       // has no associated team renders as a full-width phase band ("VAR review started –
       // 68'"), not as a normal left/right row — unlike a VAR review WITH team data, which
@@ -247,9 +261,9 @@
           let icon='', txt='', scoreRow='';
           const minTxt=`${item.minute||''}${item.addedMinute?'+'+item.addedMinute:''}`;
           if(item.type==='kickOff'){txt='Kick off';}
-          else if(item.type==='halfTime'){txt='Half time';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
+          else if(item.type==='halfTime'){txt='Half time';const sc=tlScoreAsOf(item.minute||0,false)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${sc.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='secondHalfStart'){txt='Start of 2nd half time';}
-          else if(item.type==='fullTime'){txt='Match ends';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
+          else if(item.type==='fullTime'){txt='Match ends';const sc=tlScoreAsOf(null,true)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${sc.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='injuryTime'){txt=`Injury time – ${item.extraMinutes||'?'} min added`;}
           else if(item.type==='varReviewStart'){txt=`VAR review started – <span class="tl-phase-minute">${minTxt}'</span>`;}
           else if(item.type==='varReviewEnd'){txt=`VAR review ended – <span class="tl-phase-minute">${minTxt}'</span>`;}
@@ -357,7 +371,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.30';
+  const TL_TOOL_VERSION = 'v0.1.31';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -973,7 +987,15 @@
       return;
     }
 
-    window._tlIncidents = window._tlIncidents || [];
+    // Per the "Timeline - FE" spec: "The tab should be available only after we receive
+    // our first incident which most probably will be 'match kick off'" (Timeline tab
+    // visibility gating, SBEUJE-6118) — i.e. a real Timeline tab never exists with zero
+    // incidents, its very existence implies kick-off has already happened. So injecting
+    // our mock tab with a completely empty incident list misrepresents the real minimum
+    // state; seed a Kick off incident by default when nothing has been added yet.
+    if (!window._tlIncidents || !window._tlIncidents.length) {
+      window._tlIncidents = [{ type: 'kickOff', team: 'home', minute: 0, _id: 1 }];
+    }
     window._tlFilter    = 'all';
     window._tlInjected  = true;
 
