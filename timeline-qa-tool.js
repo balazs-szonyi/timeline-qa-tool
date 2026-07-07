@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.34';
+  const TL_TOOL_VERSION = 'v0.1.35';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1055,6 +1055,13 @@
       "      if (obj.incidentsTimeline && typeof obj.incidentsTimeline === 'object') {",
       '        obj.incidentsTimeline.enabled = !!ov.enabled;',
       '        applied = true;',
+      // Also handle the case where the flag key does not exist yet at all
+      // (e.g. the raw server config omits it entirely when disabled) — walk
+      // straight to the known sportsbook.event path and create it there too,
+      // instead of relying only on an already-present key to patch in place.
+      "      } else if (obj.sportsbook && obj.sportsbook.event && typeof obj.sportsbook.event === 'object') {",
+      '        obj.sportsbook.event.incidentsTimeline = Object.assign({}, obj.sportsbook.event.incidentsTimeline, { enabled: !!ov.enabled });',
+      '        applied = true;',
       '      }',
       '      for (var k in obj) {',
       "        if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] && typeof obj[k] === 'object') {",
@@ -1074,6 +1081,20 @@
       '        }',
       '      });',
       '    } catch (e) {}',
+      // The real app may (a) redefine this property itself later with its own
+      // getter/setter (startup-context.util.ts does exactly this), and/or (b)
+      // merge in an ASYNC startup-context patch some time after our initial
+      // patch ran, silently re-overwriting the flag with the true server
+      // value again. Rather than try to out-guess that internal timing
+      // exactly, keep re-forcing the value via direct in-place mutation for a
+      // few seconds after load — this reliably wins the race against the
+      // real Timeline component's one-time read during its own construction,
+      // regardless of who currently owns the top-level property.
+      '    var pollUntil = Date.now() + 8000;',
+      '    var poll = setInterval(function () {',
+      '      try { patchDeep(window.obgClientEnvironmentConfig, 0); } catch (e) {}',
+      '      if (Date.now() > pollUntil) clearInterval(poll);',
+      '    }, 150);',
       '    window.__tlQaAutoOverrideApplied = function () { return applied; };',
       '  } catch (e) {}',
       '})();'
@@ -1181,34 +1202,57 @@
 
   function tlUpdateAutoOverrideStatus() {
     const statusEl = $('tl-autoov-status');
-    const active = $('tl-autoov-cb').checked;
-    if (!active) { statusEl.textContent = ''; return; }
-    if (typeof window.__tlQaAutoOverrideApplied === 'function') {
-      const ok = window.__tlQaAutoOverrideApplied();
-      statusEl.textContent = ok
-        ? '✓ Auto-override active on this page load (config patched before the app read it)'
-        : '⚠ Helper is running but found no incidentsTimeline field to patch yet';
-      statusEl.style.color = ok ? '#7ed957' : '#faa200';
-    } else {
-      statusEl.textContent = '🔒 Configured, but no helper detected on this page load — install/start one of the helpers below, then reload';
+    let persisted;
+    try { persisted = JSON.parse(tlLsGet('tlQaAutoOverride', 'null')); } catch (e) { persisted = null; }
+    if (!persisted || !persisted.active) { statusEl.textContent = ''; return; }
+    const helperRan = typeof window.__tlQaAutoOverrideApplied === 'function';
+    const wanted = !!persisted.enabled;
+    const liveNow = tlLiveFeatureFlagValue();
+    if (!helperRan) {
+      statusEl.textContent = `🔒 incidentsTimeline.${wanted ? 'enabled' : 'disabled'} is queued to persist, but no helper detected on this page load — install/start one of the helpers below, then reload`;
       statusEl.style.color = '#777';
+    } else if (liveNow === wanted) {
+      statusEl.textContent = `✓ Auto-override active — incidentsTimeline.${wanted ? 'enabled' : 'disabled'} confirmed live right now`;
+      statusEl.style.color = '#7ed957';
+    } else {
+      // The helper ran (it patched something at document_start and/or during
+      // its post-load polling window), but the CURRENT live value still
+      // doesn't match what was requested — most likely something re-applied
+      // the real server value afterward (e.g. a later async startup-context
+      // merge), or the config's actual shape differs from what patchDeep
+      // expects on this page. Re-check a few times in case polling just
+      // hasn't caught up yet before reporting a firm mismatch.
+      statusEl.textContent = `⚠ Helper ran, but the live value is currently "${liveNow ? 'enabled' : 'disabled'}", not the requested "${wanted ? 'enabled' : 'disabled'}" — something reset it after the helper patched it. Re-checking...`;
+      statusEl.style.color = '#faa200';
+      setTimeout(() => {
+        if (tlLiveFeatureFlagValue() === wanted) {
+          statusEl.textContent = `✓ Auto-override active — incidentsTimeline.${wanted ? 'enabled' : 'disabled'} confirmed live right now`;
+          statusEl.style.color = '#7ed957';
+        } else {
+          statusEl.textContent = `✗ Confirmed mismatch — live value stays "${tlLiveFeatureFlagValue() ? 'enabled' : 'disabled'}" despite the helper running. The config is likely re-applied by an async merge after our patch window, or its shape differs from the expected sportsbook.event.incidentsTimeline path.`;
+          statusEl.style.color = '#ff6b6b';
+        }
+      }, 2500);
     }
   }
 
   // Writes the desired {active, enabled} pair to the shared localStorage key
-  // that both external helpers read from — kept in sync with the in-memory
-  // checkbox/Apply above so the tester only ever sets the value in one place.
+  // that both external helpers read from. Unconditional on every Apply click —
+  // NOT gated behind the "🔁 Auto-persist" checkbox below, since that checkbox
+  // only shows/hides the helper setup instructions. Gating the write behind it
+  // was the original v0.1.34 design and caused a real bug: testers who applied
+  // a flag value without separately remembering to also tick that checkbox saw
+  // the override silently not persist at all, even with the extension/companion
+  // correctly installed and running.
   function tlSyncAutoOverrideDesiredValue() {
-    const active = $('tl-autoov-cb').checked;
-    tlLsSet('tlQaAutoOverride', JSON.stringify({ active, enabled: $('tl-feat-cb').checked }));
+    tlLsSet('tlQaAutoOverride', JSON.stringify({ active: true, enabled: $('tl-feat-cb').checked }));
     tlUpdateAutoOverrideStatus();
   }
 
   // Restore persisted UI state (checkbox + chosen mechanism) on (re-)creation.
-  try {
-    const savedOv = JSON.parse(tlLsGet('tlQaAutoOverride', 'null'));
-    if (savedOv && savedOv.active) $('tl-autoov-cb').checked = true;
-  } catch (e) {}
+  // The checkbox itself only remembers whether the setup panel should be shown
+  // expanded — it does NOT gate whether persistence is active (see above).
+  $('tl-autoov-cb').checked = tlLsGet('tlQaAutoOverridePanelOpen', '0') === '1';
   $('tl-autoov-mechanism').value = tlLsGet('tlQaAutoOverrideMechanism', 'ext');
   $('tl-autoov-panel').style.display = $('tl-autoov-cb').checked ? 'flex' : 'none';
   tlSyncAutoOverrideInstructions();
@@ -1216,7 +1260,7 @@
 
   $('tl-autoov-cb').addEventListener('change', () => {
     $('tl-autoov-panel').style.display = $('tl-autoov-cb').checked ? 'flex' : 'none';
-    tlSyncAutoOverrideDesiredValue();
+    tlLsSet('tlQaAutoOverridePanelOpen', $('tl-autoov-cb').checked ? '1' : '0');
   });
   $('tl-autoov-mechanism').addEventListener('change', () => {
     tlLsSet('tlQaAutoOverrideMechanism', $('tl-autoov-mechanism').value);
