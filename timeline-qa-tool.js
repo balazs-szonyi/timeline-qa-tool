@@ -23,6 +23,7 @@
       .tl-hbar-wrap{padding:32px 16px 32px}
       .tl-hbar-track{position:relative;height:4px;border-radius:2px;background:#e2e3e8}
       .tl-hbar-progress{position:absolute;top:0;height:100%;background:#40b840;border-radius:2px}
+      .tl-hbar-knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#40b840;z-index:2}
       .tl-hbar-time{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#333;color:#fdfdfd;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;font-family:inherit;z-index:3}
       .tl-hbar-markers{position:absolute;inset:0}
       .tl-hbar-dot{position:absolute;left:0;transform:translate(-50%,-50%);width:20px;height:20px;display:flex;align-items:center;justify-content:center;z-index:2}
@@ -37,6 +38,7 @@
       .tl-minute{position:absolute;left:50%;top:12px;transform:translate(-50%,-50%);background:#f7f7f9;color:#ff6600;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;z-index:2}
       .tl-phase{width:100%;display:flex;align-items:center;justify-content:center;background:#eeeff2;border-radius:8px;padding:8px 16px;min-height:36px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7);gap:6px}
       .tl-phase.tl-phase-injury{color:#dd2727}
+      .tl-phase-minute{color:#ff6600}
       .tl-phase-icon{width:16px;height:16px;display:inline-flex;flex-shrink:0}
       .tl-phase-icon svg{width:100%;height:100%;display:block}
       .tl-phase-score-inline{font-weight:800;color:rgba(4,4,6,.87)}
@@ -107,6 +109,11 @@
       // and the live time badge sits fixed between the two, never sliding along a track.
       const half1Elapsed=Math.min(curMin,45), half2Elapsed=curMin>45?Math.min(curMin-45,45):0;
       const pct1=(half1Elapsed/45)*50, pct2=(half2Elapsed/45)*50;
+      // Per "case with just the kick off": even before any incidents happen, a small green
+      // knob marks the live leading edge of the elapsed progress (like a scrubber head).
+      // Only shown mid-half — at the 45'/90' half boundaries the fixed time badge already
+      // occupies that exact spot, so a knob there would be redundant/hidden behind it.
+      const knobPct = curMin>45 ? (pct2>0&&pct2<50?50+pct2:null) : (pct1>0&&pct1<50?pct1:null);
       // Per SBEUJE-6150/epic AC5: injury-time incidents (addedMinute>0 at the 45'/90' mark) still render
       // on the horizontal timeline, but ranked side-by-side in a small reserved cluster zone at the end
       // of their half instead of scaling proportionally — this keeps them from landing under the time badge.
@@ -124,14 +131,20 @@
       const dotHalfWidthPx=10, gapPx=6;
       const maxInj1CenterPct=50-((badgeWidthPx/2+dotHalfWidthPx+gapPx)/trackWidthPx*100);
       function rankInjuryPositions(list,base,clampMaxPct){
-        const sortedList=[...list].sort((a,b)=>(a.addedMinute||0)-(b.addedMinute||0));
-        const n=sortedList.length, map=new Map();
-        sortedList.forEach((it,idx)=>{
+        // Per the "Overlap requirements" spec: injury-time incidents are ranked
+        // side-by-side by their DISTINCT added-minute value — incidents sharing the
+        // exact same added minute must share the same horizontal slot (they stack
+        // vertically instead, same as same-minute normal-time incidents).
+        const distinctAdded=[...new Set(list.map(it=>it.addedMinute||0))].sort((a,b)=>a-b);
+        const n=distinctAdded.length, posByAdded=new Map();
+        distinctAdded.forEach((added,idx)=>{
           const frac=n>1?idx/(n-1):0.5;
           let pos=base+ZONE_PAD+frac*(INJURY_ZONE-2*ZONE_PAD);
           if(clampMaxPct!=null) pos=Math.min(pos,clampMaxPct);
-          map.set(it,pos);
+          posByAdded.set(added,pos);
         });
+        const map=new Map();
+        list.forEach(it=>map.set(it,posByAdded.get(it.addedMinute||0)));
         return map;
       }
       const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===45&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
@@ -170,42 +183,65 @@
       const iconHtml = t => ICON_SVG[t] ? ICON_SVG[t](ICON_COLOR[t]) : '';
       const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
-      for(const it of hItems){
+      // Per the "Overlap requirements for incident timeline" spec: two+ incidents at the
+      // exact same minute (normal time) or same added-minute (injury time) that land on the
+      // same horizontal slot AND the same team side must be ranked "one above the other"
+      // (stacked vertically) instead of drawn exactly on top of each other.
+      const dotSpecs=hItems.map(it=>{
         const min=it.minute||0, added=it.addedMinute||0;
-        // Same benefiting-side convention as the vertical list (see isHome comment below).
-        const top=it.type==='ownGoal'?it.team!=='home':it.team==='home';
-        let dp;
-        if(min===45&&added>0) dp=inj1Map.get(it);
-        else if(min===90&&added>0) dp=inj2Map.get(it);
-        else if(min<=45) dp=(Math.min(min,45)/45)*normalW1;
-        else dp=50+(Math.min(min-45,45)/45)*normalW2;
-        hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- 8px':'+ 8px'})">${iconHtml(it.type)}</div>`;
+        // Own goals stay on the side of the team whose player committed them (item.team,
+        // no flip) — per the Figma "name needs 2 lines" full-match reference, an own goal
+        // row/dot renders on the SCORING PLAYER's own team side; only the score digit that
+        // gets bolded is flipped to the benefiting team (see isHome comment below).
+        const top=it.team==='home';
+        let dp, timeKey;
+        if(min===45&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
+        else if(min===90&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
+        else if(min<=45){dp=(Math.min(min,45)/45)*normalW1;timeKey='n-'+min;}
+        else{dp=50+(Math.min(min-45,45)/45)*normalW2;timeKey='n-'+min;}
+        return {it,dp,top,groupKey:timeKey+'|'+(top?'top':'bottom')};
+      });
+      const stackRank=new Map();
+      for(const spec of dotSpecs){
+        const rank=(stackRank.get(spec.groupKey)||0);
+        stackRank.set(spec.groupKey,rank+1);
+        spec.rank=rank;
+      }
+      for(const {it,dp,top,rank} of dotSpecs){
+        const offsetPx=8+rank*13;
+        hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- '+offsetPx+'px':'+ '+offsetPx+'px'})">${iconHtml(it.type)}</div>`;
       }
       const sorted=[...items].reverse();
       const visible=filter==='all'?sorted:filter==='goals'?sorted.filter(i=>PHASES.includes(i.type)||GOALS.includes(i.type)):filter==='cards'?sorted.filter(i=>PHASES.includes(i.type)||CARDS.includes(i.type)):filter==='corners'?sorted.filter(i=>PHASES.includes(i.type)||i.type==='corner'):sorted;
       let rows='';
+      // Per the "VAR incident without team data" Figma case: a VAR review start/end that
+      // has no associated team renders as a full-width phase band ("VAR review started –
+      // 68'"), not as a normal left/right row — unlike a VAR review WITH team data, which
+      // keeps the regular row treatment (icon + "VAR review starts/ends" label on its side).
+      const isNoTeamVarBand = it => (it.type==='varReviewStart'||it.type==='varReviewEnd') && !it.team;
       for(const item of visible){
-        if(PHASES.includes(item.type)){
+        if(PHASES.includes(item.type) || isNoTeamVarBand(item)){
           const home=window._tlHomeTeam||'Home', away=window._tlAwayTeam||'Away';
           let icon='', txt='', scoreRow='';
+          const minTxt=`${item.minute||''}${item.addedMinute?'+'+item.addedMinute:''}`;
           if(item.type==='kickOff'){txt='Kick off';}
           else if(item.type==='halfTime'){txt='Half time';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='secondHalfStart'){txt='Start of 2nd half time';}
           else if(item.type==='fullTime'){txt='Match ends';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='injuryTime'){txt=`Injury time – ${item.extraMinutes||'?'} min added`;}
+          else if(item.type==='varReviewStart'){txt=`VAR review started – <span class="tl-phase-minute">${minTxt}'</span>`;}
+          else if(item.type==='varReviewEnd'){txt=`VAR review ended – <span class="tl-phase-minute">${minTxt}'</span>`;}
           const iconWrap=icon?`<span class="tl-phase-icon">${icon}</span>`:'';
           const titleClass=scoreRow?'tl-phase tl-phase-title':'tl-phase';
           rows+=`<div class="tl-phase-group"><div class="${titleClass}">${iconWrap}${txt}</div>${scoreRow}</div>`;
         }
         else{
-          // Own goals are credited to (and displayed on) the BENEFITING team's side —
-          // per the Confluence data-provider mapping ("OWN GOAL HOME" event_code:261
-          // shares the same related_event_code as "GOAL HOME" 1029), an own goal is
-          // just a Goal event scored against the team whose player put it in their own
-          // net. `item.team` here is authored/received as the scoring PLAYER's own team,
-          // so the row must render on the opposite side (matching the score-bolding
-          // logic in scoringSideOf/updateScorePreview above, which already does this).
-          const isHome=item.type==='ownGoal'?item.team!=='home':item.team==='home';
+          // Own goal ROW stays on the side of the team whose player committed it (per the
+          // Figma "name needs 2 lines" full-match reference: Cody Gakpo's own goal renders
+          // on Liverpool/home's column even though it benefits the away team) — isHome is
+          // simply item.team here, no flip. Only the score digit that gets bolded flips to
+          // the benefiting side (see scoringSide below).
+          const isHome=item.team==='home';
           const icon=`<div class="tl-icon">${iconHtml(item.type)}</div>`;
           let body=`<div class="tl-inc-label">${LABEL[item.type]||item.type}</div>`;
           if(item.type==='substitution'){body+=`<div class="tl-sub-list"><span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span><span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span></div>`;}
@@ -214,9 +250,10 @@
             if(item.assist)body+=`<div class="tl-assist">(Assist: ${item.assist})</div>`;
             if(item.score){
               const sp=String(item.score).split('-').map(s=>s.trim()), h=sp[0]||'', a=sp[1]||'';
-              // isHome already reflects the benefiting/display side (own goals flipped
-              // above), so the bolded (changed) number simply follows isHome now.
-              const scoringSide=isHome?'home':'away';
+              // Own goals credit (and bold) the BENEFITING team's score digit — the
+              // opposite of isHome/item.team — while every other incident type bolds
+              // the digit matching isHome.
+              const scoringSide=item.type==='ownGoal'?(isHome?'away':'home'):(isHome?'home':'away');
               body+=`<div class="tl-score"><span style="font-weight:${scoringSide==='home'?800:600}">${h}</span> - <span style="font-weight:${scoringSide==='away'?800:600}">${a}</span></div>`;
             }
           }
@@ -234,7 +271,7 @@
       const chips=`<div class="tl-chips"><button class="tl-chip${filter==='all'?' tl-active':''}" onclick="window.tlSetFilter('all')">All</button>${hasGoals?`<button class="tl-chip${filter==='goals'?' tl-active':''}" onclick="window.tlSetFilter('goals')">Goals</button>`:''}${hasCards?`<button class="tl-chip${filter==='cards'?' tl-active':''}" onclick="window.tlSetFilter('cards')">Cards</button>`:''}${hasCorners?`<button class="tl-chip${filter==='corners'?' tl-active':''}" onclick="window.tlSetFilter('corners')">Corners</button>`:''}</div>`;
       // Per the "dev ready" Figma export (zip 23): no separate Home/Away/TIMELINE header row on
       // the desktop widget — the incident list starts right after the horizontal progress bar.
-      p.innerHTML=`${chips}<div class="tl-hbar-wrap"><div class="tl-hbar-track"><div class="tl-hbar-progress" style="left:0;width:${pct1}%"></div><div class="tl-hbar-progress" style="left:50%;width:${pct2}%"></div><div class="tl-hbar-markers">${hDots}</div>${curMin?`<div class="tl-hbar-time">${curMinDisplay}:00</div>`:''}</div></div><div class="tl-list">${rows}</div><div class="tl-disclaimer">The score displayed and further information (e.g. time, scorer) is for reference only. We do not guarantee the accuracy of this information.</div>`;
+      p.innerHTML=`${chips}<div class="tl-hbar-wrap"><div class="tl-hbar-track"><div class="tl-hbar-progress" style="left:0;width:${pct1}%"></div><div class="tl-hbar-progress" style="left:50%;width:${pct2}%"></div>${knobPct!=null?`<div class="tl-hbar-knob" style="left:${knobPct}%"></div>`:''}<div class="tl-hbar-markers">${hDots}</div>${curMin?`<div class="tl-hbar-time">${curMinDisplay}:00</div>`:''}</div></div><div class="tl-list">${rows}</div><div class="tl-disclaimer">The score displayed and further information (e.g. time, scorer) is for reference only. We do not guarantee the accuracy of this information.</div>`;
     };
   }
 })();/**
@@ -298,7 +335,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.25';
+  const TL_TOOL_VERSION = 'v0.1.26';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
