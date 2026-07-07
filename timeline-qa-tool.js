@@ -186,7 +186,7 @@
         if(PHASES.includes(item.type)){
           const home=window._tlHomeTeam||'Home', away=window._tlAwayTeam||'Away';
           let icon='', txt='', scoreRow='';
-          if(item.type==='kickOff'){icon=iconHtml('kickOff');txt='Kick off';}
+          if(item.type==='kickOff'){txt='Kick off';}
           else if(item.type==='halfTime'){txt='Half time';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='secondHalfStart'){txt='Start of 2nd half time';}
           else if(item.type==='fullTime'){txt='Match ends';if(item.scoreText)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${item.scoreText.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
@@ -290,7 +290,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.23';
+  const TL_TOOL_VERSION = 'v0.1.24';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
