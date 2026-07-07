@@ -38,6 +38,7 @@ jobs:
         uses: actions/deploy-pages@v5
         continue-on-error: true
         with:
+          # Pages can remain in `purging_cdn` for longer than the default 10 minutes.
           timeout: 1800000
 
       - name: Retry deploy to GitHub Pages
