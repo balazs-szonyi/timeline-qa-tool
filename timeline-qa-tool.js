@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.33';
+  const TL_TOOL_VERSION = 'v0.1.34';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -533,6 +533,26 @@
             <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
           </div>
           <div id="tl-obgrt-status" style="font-size:10px;padding:0 2px"></div>
+
+          <hr class="tl-qa-sep" style="margin:8px 0">
+          <div class="tl-qa-row">
+            <label class="tl-qa-toggle">
+              <input type="checkbox" id="tl-autoov-cb">
+              <span style="font-size:12px">🔁 Auto-persist across REAL reloads</span>
+            </label>
+          </div>
+          <div id="tl-autoov-panel" style="display:none;flex-direction:column;gap:6px">
+            <div style="font-size:10px;color:#999;padding:0 2px">A bookmarklet always runs AFTER the page's own scripts, so it can never intercept a real reload by itself (browser security, not a limitation we can code around) — pick ONE helper below to make the ${''}<code>incidentsTimeline.enabled</code> value above survive every future reload automatically:</div>
+            <select id="tl-autoov-mechanism" class="tl-qa-btn grey" style="width:100%;padding:6px">
+              <option value="ext">🧩 Browser extension — one-time install, then fully automatic (no running process)</option>
+              <option value="cdp">💻 Chrome remote-debug companion (Node) — must keep a terminal running</option>
+            </select>
+            <div id="tl-autoov-instructions" style="font-size:10px;color:#999;padding:0 2px;white-space:pre-line"></div>
+            <div class="tl-qa-row">
+              <button class="tl-qa-btn grey" id="tl-autoov-download" style="width:100%">⬇️ Download helper files</button>
+            </div>
+            <div id="tl-autoov-status" style="font-size:10px;padding:0 2px"></div>
+          </div>
         </div>
       </div>
 
@@ -1000,6 +1020,219 @@
     cfg.incidentsTimeline = { ...(cfg.incidentsTimeline || {}), enabled: $('tl-feat-cb').checked };
     tlStatus(`incidentsTimeline.${$('tl-feat-cb').checked ? 'enabled' : 'disabled'}`);
     tlUpdateFeatUI();
+    tlSyncAutoOverrideDesiredValue();
+  });
+
+  // ── Auto-persist override across REAL reloads ────────────────────────────
+  // A bookmarklet only ever runs after the page's own scripts have already
+  // executed, so it can NEVER intercept a real reload/navigation by itself —
+  // this is a browser security boundary, not something we can code around
+  // in-page. The only way to make incidentsTimeline.enabled survive a real
+  // reload automatically (i.e. replicate what Chrome DevTools "Local
+  // Overrides" does, but without any manual per-reload action) is to run our
+  // patch EARLIER than any page script, via one of two external helpers:
+  //   - a tiny browser extension content script at document_start, or
+  //   - Chrome DevTools Protocol's Page.addScriptToEvaluateOnNewDocument,
+  //     driven by a small Node companion connected over remote-debugging.
+  // Both helpers read the SAME localStorage key ('tlQaAutoOverride') that this
+  // panel writes, and both run the SAME generic deep-patch logic below, so
+  // whichever one the tester installs, the desired value here is what applies.
+  function tlAutoOverridePatchSource() {
+    // Generic on-purpose: rather than hardcode the exact nesting path (which
+    // may differ before/after Angular's own extendStartupContext() merge —
+    // see startup-context.util.ts), this walks the whole config object and
+    // patches every "incidentsTimeline" object it finds, at any depth.
+    return [
+      '(function(){',
+      '  try {',
+      "    var raw = window.localStorage.getItem('tlQaAutoOverride');",
+      '    if (!raw) return;',
+      '    var ov = JSON.parse(raw);',
+      '    if (!ov || !ov.active) return;',
+      '    var applied = false;',
+      '    function patchDeep(obj, depth) {',
+      "      if (!obj || typeof obj !== 'object' || depth > 6) return;",
+      "      if (obj.incidentsTimeline && typeof obj.incidentsTimeline === 'object') {",
+      '        obj.incidentsTimeline.enabled = !!ov.enabled;',
+      '        applied = true;',
+      '      }',
+      '      for (var k in obj) {',
+      "        if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] && typeof obj[k] === 'object') {",
+      '          try { patchDeep(obj[k], depth + 1); } catch (e) {}',
+      '        }',
+      '      }',
+      '    }',
+      '    var backing;',
+      '    try {',
+      "      Object.defineProperty(window, 'obgClientEnvironmentConfig', {",
+      '        configurable: true,',
+      '        enumerable: true,',
+      '        get: function () { return backing; },',
+      '        set: function (v) {',
+      '          try { patchDeep(v, 0); } catch (e) {}',
+      '          backing = v;',
+      '        }',
+      '      });',
+      '    } catch (e) {}',
+      '    window.__tlQaAutoOverrideApplied = function () { return applied; };',
+      '  } catch (e) {}',
+      '})();'
+    ].join('\n');
+  }
+
+  function tlAutoOverrideExtManifest() {
+    return JSON.stringify({
+      manifest_version: 3,
+      name: 'Timeline QA — auto override',
+      version: '1.0.0',
+      description: 'Forces incidentsTimeline.enabled to the value chosen in the Timeline QA Tool, before every page load — so it survives real reloads without manual DevTools overrides.',
+      content_scripts: [{
+        matches: ['<all_urls>'],
+        js: ['content.js'],
+        run_at: 'document_start',
+        all_frames: true
+      }]
+    }, null, 2);
+  }
+
+  function tlDownloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  function tlAutoOverrideCdpCompanionSource() {
+    return [
+      '#!/usr/bin/env node',
+      '// tl-override-companion.js — keeps the incidentsTimeline.enabled override',
+      "// applied across every real reload, by injecting the tool's patch script",
+      '// before any page script runs on every tab (Page.addScriptToEvaluateOnNewDocument),',
+      "// via Chrome's remote-debugging protocol. Requires `npm install` first.",
+      '//',
+      '// Setup:',
+      '//   1. Close Chrome fully, then relaunch it with --remote-debugging-port=9222',
+      '//      (e.g. add the flag to your Chrome shortcut target, or run from a',
+      '//      terminal: chrome.exe --remote-debugging-port=9222)',
+      '//   2. In this folder: npm install',
+      '//   3. node tl-override-companion.js', 
+      '//   4. Keep this terminal open — every reload on any tab now gets the',
+      "//      override applied automatically, reading the desired value from",
+      "//      this browser's localStorage (set via the Timeline QA Tool panel).",
+      '',
+      "const CDP = require('chrome-remote-interface');",
+      '',
+      'const OVERRIDE_SOURCE = ' + JSON.stringify(tlAutoOverridePatchSource()) + ';',
+      '',
+      'const attached = new Set();',
+      '',
+      'async function attachAll() {',
+      '  let targets;',
+      '  try { targets = await CDP.List({ port: 9222 }); }',
+      '  catch (e) {',
+      "    console.error('[tl-override] cannot reach Chrome on port 9222 — is it running with --remote-debugging-port=9222?', e.message);",
+      '    return;',
+      '  }',
+      "  for (const t of targets) {",
+      "    if (t.type !== 'page' || attached.has(t.id)) continue;",
+      '    try {',
+      '      const client = await CDP({ target: t.id, port: 9222 });',
+      '      const { Page } = client;',
+      '      await Page.enable();',
+      '      await Page.addScriptToEvaluateOnNewDocument({ source: OVERRIDE_SOURCE });',
+      '      attached.add(t.id);',
+      "      console.log('[tl-override] attached to', t.url);",
+      '      client.on(\'disconnect\', () => attached.delete(t.id));',
+      '    } catch (e) {',
+      "      console.error('[tl-override] failed to attach', t.url, e.message);",
+      '    }',
+      '  }',
+      '}',
+      '',
+      'setInterval(attachAll, 2000);',
+      'attachAll();',
+      "console.log('[tl-override] companion running — override applies to every reload while this stays open.');"
+    ].join('\n');
+  }
+
+  function tlAutoOverrideCdpPackageJson() {
+    return JSON.stringify({
+      name: 'tl-override-companion',
+      version: '1.0.0',
+      private: true,
+      description: 'Companion script for Timeline QA Tool auto-persist override',
+      main: 'tl-override-companion.js',
+      scripts: { start: 'node tl-override-companion.js' },
+      dependencies: { 'chrome-remote-interface': '^0.33.0' }
+    }, null, 2);
+  }
+
+  const AUTOOV_INSTRUCTIONS = {
+    ext: '1) Click "Download helper files" (manifest.json + content.js).\n2) Put both files in one empty folder.\n3) Chrome → chrome://extensions → enable "Developer mode" → "Load unpacked" → select that folder.\n4) Done. Every future reload on any page auto-applies the override while the extension stays enabled — no running process needed. To change the value later, just toggle the checkbox above and click Apply; no reinstall needed.',
+    cdp: '1) Click "Download helper files" (tl-override-companion.js + package.json).\n2) Put both in one folder, then in a terminal there run: npm install\n3) Fully close Chrome, then relaunch it with the flag --remote-debugging-port=9222 (e.g. add it to your Chrome shortcut target).\n4) In the same folder run: node tl-override-companion.js — keep this terminal open.\n5) Every reload on any tab now gets the override applied automatically, for as long as the script keeps running.'
+  };
+
+  function tlSyncAutoOverrideInstructions() {
+    const mech = $('tl-autoov-mechanism').value;
+    $('tl-autoov-instructions').textContent = AUTOOV_INSTRUCTIONS[mech];
+  }
+
+  function tlUpdateAutoOverrideStatus() {
+    const statusEl = $('tl-autoov-status');
+    const active = $('tl-autoov-cb').checked;
+    if (!active) { statusEl.textContent = ''; return; }
+    if (typeof window.__tlQaAutoOverrideApplied === 'function') {
+      const ok = window.__tlQaAutoOverrideApplied();
+      statusEl.textContent = ok
+        ? '✓ Auto-override active on this page load (config patched before the app read it)'
+        : '⚠ Helper is running but found no incidentsTimeline field to patch yet';
+      statusEl.style.color = ok ? '#7ed957' : '#faa200';
+    } else {
+      statusEl.textContent = '🔒 Configured, but no helper detected on this page load — install/start one of the helpers below, then reload';
+      statusEl.style.color = '#777';
+    }
+  }
+
+  // Writes the desired {active, enabled} pair to the shared localStorage key
+  // that both external helpers read from — kept in sync with the in-memory
+  // checkbox/Apply above so the tester only ever sets the value in one place.
+  function tlSyncAutoOverrideDesiredValue() {
+    const active = $('tl-autoov-cb').checked;
+    tlLsSet('tlQaAutoOverride', JSON.stringify({ active, enabled: $('tl-feat-cb').checked }));
+    tlUpdateAutoOverrideStatus();
+  }
+
+  // Restore persisted UI state (checkbox + chosen mechanism) on (re-)creation.
+  try {
+    const savedOv = JSON.parse(tlLsGet('tlQaAutoOverride', 'null'));
+    if (savedOv && savedOv.active) $('tl-autoov-cb').checked = true;
+  } catch (e) {}
+  $('tl-autoov-mechanism').value = tlLsGet('tlQaAutoOverrideMechanism', 'ext');
+  $('tl-autoov-panel').style.display = $('tl-autoov-cb').checked ? 'flex' : 'none';
+  tlSyncAutoOverrideInstructions();
+  tlUpdateAutoOverrideStatus();
+
+  $('tl-autoov-cb').addEventListener('change', () => {
+    $('tl-autoov-panel').style.display = $('tl-autoov-cb').checked ? 'flex' : 'none';
+    tlSyncAutoOverrideDesiredValue();
+  });
+  $('tl-autoov-mechanism').addEventListener('change', () => {
+    tlLsSet('tlQaAutoOverrideMechanism', $('tl-autoov-mechanism').value);
+    tlSyncAutoOverrideInstructions();
+  });
+  $('tl-autoov-download').addEventListener('click', () => {
+    const mech = $('tl-autoov-mechanism').value;
+    if (mech === 'ext') {
+      tlDownloadFile('manifest.json', tlAutoOverrideExtManifest(), 'application/json');
+      setTimeout(() => tlDownloadFile('content.js', tlAutoOverridePatchSource(), 'text/javascript'), 300);
+      tlStatus('Downloaded manifest.json + content.js — see instructions above');
+    } else {
+      tlDownloadFile('tl-override-companion.js', tlAutoOverrideCdpCompanionSource(), 'text/javascript');
+      setTimeout(() => tlDownloadFile('package.json', tlAutoOverrideCdpPackageJson(), 'application/json'), 300);
+      tlStatus('Downloaded tl-override-companion.js + package.json — see instructions above');
+    }
   });
 
   // ── Expose obgRt / obgState gating ───────────────────────────────────────
