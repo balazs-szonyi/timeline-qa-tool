@@ -106,7 +106,16 @@
       const GOALS=['goal','ownGoal','penaltyScored'], CARDS=['yellowCard','secondYellow','redCard'];
       const hasGoals=items.some(i=>GOALS.includes(i.type)), hasCards=items.some(i=>CARDS.includes(i.type)), hasCorners=items.some(i=>i.type==='corner');
       const hItems=items.filter(i=>!PHASES.includes(i.type)&&(GOALS.includes(i.type)||CARDS.includes(i.type)));
-      const allMins=items.map(i=>i.minute||0).filter(Boolean), curMin=allMins.length?Math.max(...allMins):0;
+      // Per "When the match starts we should colour the 1st part" (Timeline - FE Confluence
+      // spec, horizontal timeline section): the very first of the 90 one-minute sections is
+      // coloured in immediately at kick off, before any other incident exists — the match
+      // clock is treated as always "at least 1' elapsed" once live, never a flat 0/empty bar.
+      // Do NOT filter out literal minute:0 entries (e.g. the kickOff incident itself) as
+      // "no data" — that previously suppressed both the live-time badge and the progress
+      // fill entirely for a freshly-injected, kickoff-only tab.
+      const kickedOff=items.some(i=>i.type==='kickOff');
+      const allMins=items.map(i=>i.minute||0), rawCurMin=allMins.length?Math.max(...allMins):0;
+      const curMin=kickedOff?Math.max(rawCurMin,1):rawCurMin;
       // Combined "elapsed minutes" number for the badge text (e.g. 90+3 shown as "93", per Figma reference).
       let curAdded=0;
       for(const it of items){const m=it.minute||0,a=it.addedMinute||0; if(m>curMin||(m===curMin&&a>curAdded)){curAdded=a;}}
@@ -307,7 +316,7 @@
       const chips=`<div class="tl-chips"><button class="tl-chip${filter==='all'?' tl-active':''}" onclick="window.tlSetFilter('all')">All</button>${hasGoals?`<button class="tl-chip${filter==='goals'?' tl-active':''}" onclick="window.tlSetFilter('goals')">Goals</button>`:''}${hasCards?`<button class="tl-chip${filter==='cards'?' tl-active':''}" onclick="window.tlSetFilter('cards')">Cards</button>`:''}${hasCorners?`<button class="tl-chip${filter==='corners'?' tl-active':''}" onclick="window.tlSetFilter('corners')">Corners</button>`:''}</div>`;
       // Per the "dev ready" Figma export (zip 23): no separate Home/Away/TIMELINE header row on
       // the desktop widget — the incident list starts right after the horizontal progress bar.
-      p.innerHTML=`${chips}<div class="tl-hbar-wrap"><div class="tl-hbar-track"><div class="tl-hbar-progress" style="left:0;width:${pct1}%"></div><div class="tl-hbar-progress" style="left:50%;width:${pct2}%"></div>${knobPct!=null?`<div class="tl-hbar-knob" style="left:${knobPct}%"></div>`:''}<div class="tl-hbar-markers">${hDots}</div>${curMin?`<div class="tl-hbar-time">${curMinDisplay}:00</div>`:''}</div></div><div class="tl-list">${rows}</div><div class="tl-disclaimer">The score displayed and further information (e.g. time, scorer) is for reference only. We do not guarantee the accuracy of this information.</div>`;
+      p.innerHTML=`${chips}<div class="tl-hbar-wrap"><div class="tl-hbar-track"><div class="tl-hbar-progress" style="left:0;width:${pct1}%"></div><div class="tl-hbar-progress" style="left:50%;width:${pct2}%"></div>${knobPct!=null?`<div class="tl-hbar-knob" style="left:${knobPct}%"></div>`:''}<div class="tl-hbar-markers">${hDots}</div>${items.length?`<div class="tl-hbar-time">${curMinDisplay}:00</div>`:''}</div></div><div class="tl-list">${rows}</div><div class="tl-disclaimer">The score displayed and further information (e.g. time, scorer) is for reference only. We do not guarantee the accuracy of this information.</div>`;
     };
   }
 })();/**
@@ -371,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.32';
+  const TL_TOOL_VERSION = 'v0.1.33';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -382,6 +391,7 @@
     // reopened (not just on first injection), since the host page's config may only
     // have finished loading after our first init, or may have changed since.
     if (opening && typeof window._tlSyncFeatureFlag === 'function') window._tlSyncFeatureFlag();
+    if (opening && typeof window._tlSyncObgRtStatus === 'function') window._tlSyncObgRtStatus();
     return;
   }
 
@@ -456,6 +466,10 @@
     .tl-qa-btn.grey:hover { background: #44445a; }
     .tl-qa-btn.unsaved { background: #ff6600; color: #fff; }
     .tl-qa-btn.unsaved:hover { background: #ff7a1f; }
+    .tl-qa-btn:disabled, .tl-qa-btn.disabled {
+      background: #2a2a3a; color: #666; cursor: not-allowed; opacity: .6;
+    }
+    .tl-qa-btn:disabled:hover, .tl-qa-btn.disabled:hover { background: #2a2a3a; }
     .tl-qa-btn.purple { background: #7b2d8b; }
     .tl-qa-btn.purple:hover { background: #6a2578; }
     .tl-qa-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -518,6 +532,7 @@
           <div class="tl-qa-row">
             <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
           </div>
+          <div id="tl-obgrt-status" style="font-size:10px;padding:0 2px"></div>
         </div>
       </div>
 
@@ -986,6 +1001,34 @@
     tlStatus(`incidentsTimeline.${$('tl-feat-cb').checked ? 'enabled' : 'disabled'}`);
     tlUpdateFeatUI();
   });
+
+  // ── Expose obgRt / obgState gating ───────────────────────────────────────
+  // exposeObgRt and exposeObgState are two DISTINCT host-page flags: obgRt unlocks
+  // window.obgRt.injectMessage/setGamePhase (the RT channel our Match-tab-sync writes
+  // through), while obgState unlocks window.xSbState/window.obgState (the SB app's own
+  // state snapshot our sync reads scoreboard/participant data from) — Match tab sync
+  // needs BOTH. Our "Expose obgRt" button requests both flags together in one reload
+  // (matching the Sportsbook Tool's own combined "Expose obg/xSbState and obgRt"
+  // action), so from this tool's point of view they gate the exact same feature.
+  function tlObgRtExposed() { return !!(window.obgRt && typeof window.obgRt.injectMessage === 'function'); }
+  function tlObgStateExposed() { return !!(window.xSbState || window.obgState); }
+  function tlUpdateObgRtStatus() {
+    const btn = $('tl-expose-obgrt'), statusEl = $('tl-obgrt-status');
+    if (!btn || !statusEl) return;
+    const exposed = tlObgRtExposed() && tlObgStateExposed();
+    // Per request: once successfully exposed, the one-shot action button itself is no
+    // longer needed/relevant, so it's hidden rather than left clickable for no reason.
+    btn.style.display = exposed ? 'none' : 'block';
+    if (exposed) {
+      statusEl.textContent = '✓ obgRt + obgState exposed — Match tab sync active';
+      statusEl.style.color = '#7ed957';
+    } else {
+      statusEl.textContent = '🔒 Match tab sync disabled until exposed (needs both obgRt + obgState)';
+      statusEl.style.color = '#777';
+    }
+  }
+  window._tlSyncObgRtStatus = tlUpdateObgRtStatus;
+  tlUpdateObgRtStatus();
 
   // ── Expose obgRt ─────────────────────────────────────────────────────────
   // Mirrors the Sportsbook Tool's own "Expose obg/xSbState and obgRt" button
