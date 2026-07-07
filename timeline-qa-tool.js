@@ -357,11 +357,16 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.29';
+  const TL_TOOL_VERSION = 'v0.1.30';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
-    ep.style.display = ep.style.display === 'none' ? 'flex' : 'none';
+    const opening = ep.style.display === 'none';
+    ep.style.display = opening ? 'flex' : 'none';
+    // Re-detect the live incidentsTimeline.enabled value every time the panel is
+    // reopened (not just on first injection), since the host page's config may only
+    // have finished loading after our first init, or may have changed since.
+    if (opening && typeof window._tlSyncFeatureFlag === 'function') window._tlSyncFeatureFlag();
     return;
   }
 
@@ -416,6 +421,8 @@
     .tl-qa-btn.red:hover { background: #a93226; }
     .tl-qa-btn.grey { background: #37374a; color: #ccc; }
     .tl-qa-btn.grey:hover { background: #44445a; }
+    .tl-qa-btn.unsaved { background: #ff6600; color: #fff; }
+    .tl-qa-btn.unsaved:hover { background: #ff7a1f; }
     .tl-qa-btn.purple { background: #7b2d8b; }
     .tl-qa-btn.purple:hover { background: #6a2578; }
     .tl-qa-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -467,7 +474,7 @@
       <div class="tl-qa-row">
         <label class="tl-qa-toggle">
           <input type="checkbox" id="tl-feat-cb">
-          <span style="font-size:12px">incidentsTimeline.enabled</span>
+          <span style="font-size:12px" id="tl-feat-label">incidentsTimeline.disabled</span>
         </label>
         <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
       </div>
@@ -842,15 +849,35 @@
   renderIncidentList();
 
   // ── Feature flag ───────────────────────────────────────────────────────
-  // Read current value on init
-  const featurePath = window.obgClientEnvironmentConfig?.startupContext?.config?.sportsbook?.event?.incidentsTimeline;
-  if (featurePath) $('tl-feat-cb').checked = !!featurePath.enabled;
+  // Live env value is read fresh every time (init + every reopen, see the
+  // reopen-toggle branch near the top of this IIFE) — never assumed stale.
+  function tlLiveFeatureFlagValue() {
+    return !!window.obgClientEnvironmentConfig?.startupContext?.config?.sportsbook?.event?.incidentsTimeline?.enabled;
+  }
+  function tlUpdateFeatUI() {
+    const cb = $('tl-feat-cb'), label = $('tl-feat-label'), applyBtn = $('tl-feat-apply');
+    if (!cb) return;
+    label.textContent = `incidentsTimeline.${cb.checked ? 'enabled' : 'disabled'}`;
+    // Highlight Apply orange whenever the checkbox (what the tester is about to set)
+    // differs from the actual live config value — so auto-detected state vs. an
+    // un-applied manual toggle are never visually ambiguous.
+    applyBtn.classList.toggle('unsaved', cb.checked !== tlLiveFeatureFlagValue());
+  }
+  window._tlSyncFeatureFlag = function() {
+    const cb = $('tl-feat-cb');
+    if (!cb) return;
+    cb.checked = tlLiveFeatureFlagValue();
+    tlUpdateFeatUI();
+  };
+  window._tlSyncFeatureFlag();
+  $('tl-feat-cb').addEventListener('change', tlUpdateFeatUI);
 
   $('tl-feat-apply').addEventListener('click', () => {
     const cfg = window.obgClientEnvironmentConfig?.startupContext?.config?.sportsbook?.event;
     if (!cfg) { tlStatus('Config path not found', true); return; }
     cfg.incidentsTimeline = { ...(cfg.incidentsTimeline || {}), enabled: $('tl-feat-cb').checked };
-    tlStatus(`incidentsTimeline.enabled = ${$('tl-feat-cb').checked}`);
+    tlStatus(`incidentsTimeline.${$('tl-feat-cb').checked ? 'enabled' : 'disabled'}`);
+    tlUpdateFeatUI();
   });
 
   // ── Expose obgRt ─────────────────────────────────────────────────────────
