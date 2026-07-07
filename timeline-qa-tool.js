@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.36';
+  const TL_TOOL_VERSION = 'v0.1.37';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -444,6 +444,12 @@
     .tl-qa-section-body { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
     .tl-qa-section.tl-qa-collapsed .tl-qa-collapse-btn { transform: rotate(-90deg); }
     .tl-qa-section.tl-qa-collapsed .tl-qa-section-body { display: none; }
+    .tl-qa-details { font-size: 10px; color: #999; }
+    .tl-qa-details summary { cursor: pointer; color: #aaa; list-style: none; }
+    .tl-qa-details summary::-webkit-details-marker { display: none; }
+    .tl-qa-details summary:hover { color: #fff; }
+    .tl-qa-details[open] summary { color: #ccc; margin-bottom: 4px; }
+    .tl-qa-details > div { padding: 0 2px; }
     #tl-qa-mode-row { display:flex;gap:4px;margin-bottom:4px; }
     .tl-qa-mode-btn { flex:1;padding:6px 8px;border:none;border-radius:5px;background:#37374a;color:#ccc;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s; }
     .tl-qa-mode-btn.active { background:#2e7d32;color:#fff; }
@@ -542,12 +548,18 @@
             </label>
           </div>
           <div id="tl-autoov-panel" style="display:none;flex-direction:column;gap:6px">
-            <div style="font-size:10px;color:#999;padding:0 2px">A bookmarklet always runs AFTER the page's own scripts, so it can never intercept a real reload by itself (browser security, not a limitation we can code around) — pick ONE helper below to make the ${''}<code>incidentsTimeline.enabled</code> value above survive every future reload automatically:</div>
+            <details class="tl-qa-details">
+              <summary>ⓘ Why is a helper needed at all?</summary>
+              <div>A bookmarklet always runs AFTER the page's own scripts, so it can never intercept a real reload by itself (browser security, not a limitation we can code around) — pick ONE helper below to make the <code>incidentsTimeline.enabled</code> value above survive every future reload automatically.</div>
+            </details>
             <select id="tl-autoov-mechanism" class="tl-qa-btn grey" style="width:100%;padding:6px">
-              <option value="ext">🧩 Browser extension — one-time install, then fully automatic (no running process)</option>
-              <option value="cdp">💻 Chrome remote-debug companion (Node) — must keep a terminal running</option>
+              <option value="ext">🧩 Browser extension (one-time install)</option>
+              <option value="cdp">💻 Chrome remote-debug companion (Node)</option>
             </select>
-            <div id="tl-autoov-instructions" style="font-size:10px;color:#999;padding:0 2px;white-space:pre-line"></div>
+            <details class="tl-qa-details">
+              <summary>ⓘ Setup instructions</summary>
+              <div id="tl-autoov-instructions" style="white-space:pre-line"></div>
+            </details>
             <div class="tl-qa-row">
               <button class="tl-qa-btn grey" id="tl-autoov-download" style="width:100%">⬇️ Download helper files</button>
             </div>
