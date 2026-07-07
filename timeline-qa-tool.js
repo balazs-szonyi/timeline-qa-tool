@@ -111,16 +111,21 @@
       let curAdded=0;
       for(const it of items){const m=it.minute||0,a=it.addedMinute||0; if(m>curMin||(m===curMin&&a>curAdded)){curAdded=a;}}
       const curMinDisplay=curMin+curAdded;
-      // Per SBEUJE-6148: two fixed 45-segment halves (not one continuous 0–90 bar).
-      // Half 1 fills 0→45, half 2 only starts filling once play has passed minute 45,
+      // Per SBEUJE-6148: two fixed segment halves (not one continuous bar). Per SBOF-9706/
+      // SBOF-9619/SBOF-9809 (Statistics Engine "Expected Event/Period Duration" contract,
+      // now a TimeSpan, e.g. for extended halves): each half's length is no longer assumed
+      // to always be 45' — it's configurable via the QA panel (window._tlConfig.periodDuration,
+      // defaults to 45) so testers can verify the bar/injury-zone math for non-standard periods.
+      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+      // Half 1 fills 0→PD, half 2 only starts filling once play has passed minute PD,
       // and the live time badge sits fixed between the two, never sliding along a track.
-      const half1Elapsed=Math.min(curMin,45), half2Elapsed=curMin>45?Math.min(curMin-45,45):0;
-      const pct1=(half1Elapsed/45)*50, pct2=(half2Elapsed/45)*50;
+      const half1Elapsed=Math.min(curMin,PD), half2Elapsed=curMin>PD?Math.min(curMin-PD,PD):0;
+      const pct1=(half1Elapsed/PD)*50, pct2=(half2Elapsed/PD)*50;
       // Per "case with just the kick off": even before any incidents happen, a small green
       // knob marks the live leading edge of the elapsed progress (like a scrubber head).
-      // Only shown mid-half — at the 45'/90' half boundaries the fixed time badge already
+      // Only shown mid-half — at the PD'/2×PD' half boundaries the fixed time badge already
       // occupies that exact spot, so a knob there would be redundant/hidden behind it.
-      const knobPct = curMin>45 ? (pct2>0&&pct2<50?50+pct2:null) : (pct1>0&&pct1<50?pct1:null);
+      const knobPct = curMin>PD ? (pct2>0&&pct2<50?50+pct2:null) : (pct1>0&&pct1<50?pct1:null);
       // Per SBEUJE-6150/epic AC5: injury-time incidents (addedMinute>0 at the 45'/90' mark) still render
       // on the horizontal timeline, but ranked side-by-side in a small reserved cluster zone at the end
       // of their half instead of scaling proportionally — this keeps them from landing under the time badge.
@@ -154,8 +159,8 @@
         list.forEach(it=>map.set(it,posByAdded.get(it.addedMinute||0)));
         return map;
       }
-      const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===45&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
-      const inj2Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===90&&(it.addedMinute||0)>0),100-INJURY_ZONE);
+      const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
+      const inj2Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD*2&&(it.addedMinute||0)>0),100-INJURY_ZONE);
       const GREY='#777a88', RED='#dd2727', ORANGE='#faa200', GREEN='#61aa00';
       // Icon paths below are copied verbatim from the real Betsson production icon assets
       // (b2bShared_sportsbook_timeline_*.svg / b2bShared_playerstatistics_*.svg, 16x16 viewBox),
@@ -202,10 +207,10 @@
         // gets bolded is flipped to the benefiting team (see isHome comment below).
         const top=it.team==='home';
         let dp, timeKey;
-        if(min===45&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
-        else if(min===90&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
-        else if(min<=45){dp=(Math.min(min,45)/45)*normalW1;timeKey='n-'+min;}
-        else{dp=50+(Math.min(min-45,45)/45)*normalW2;timeKey='n-'+min;}
+        if(min===PD&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
+        else if(min===PD*2&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
+        else if(min<=PD){dp=(Math.min(min,PD)/PD)*normalW1;timeKey='n-'+min;}
+        else{dp=50+(Math.min(min-PD,PD)/PD)*normalW2;timeKey='n-'+min;}
         return {it,dp,top,groupKey:timeKey+'|'+(top?'top':'bottom')};
       });
       const stackRank=new Map();
@@ -342,7 +347,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.27';
+  const TL_TOOL_VERSION = 'v0.1.28';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -464,6 +469,14 @@
         </label>
         <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
       </div>
+
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-label">Match config</div>
+      <div class="tl-qa-row">
+        <input class="tl-qa-input" type="number" id="tl-period-dur" placeholder="Period length (min)" value="45" min="1" max="90" style="flex:1">
+        <button class="tl-qa-btn grey" id="tl-period-apply" style="flex:none;padding:6px 10px">Apply</button>
+      </div>
+      <div style="font-size:11px;color:#999;padding:2px 2px 0">Per SBOF-9706/9619/9809 (Expected Period Duration), each half's length is configurable — not fixed 45' — for testing extra-time/non-standard halves.</div>
 
       <hr class="tl-qa-sep">
 
@@ -825,6 +838,17 @@
     if (!cfg) { tlStatus('Config path not found', true); return; }
     cfg.incidentsTimeline = { ...(cfg.incidentsTimeline || {}), enabled: $('tl-feat-cb').checked };
     tlStatus(`incidentsTimeline.enabled = ${$('tl-feat-cb').checked}`);
+  });
+
+  // ── Match config (Expected Period Duration, SBOF-9706/9619/9809) ────────
+  window._tlConfig = window._tlConfig || { periodDuration: 45 };
+  $('tl-period-dur').value = window._tlConfig.periodDuration;
+  $('tl-period-apply').addEventListener('click', () => {
+    const v = parseInt($('tl-period-dur').value, 10);
+    if (!v || v < 1) { tlStatus('Invalid period length', true); return; }
+    window._tlConfig.periodDuration = v;
+    tlStatus(`Period length set to ${v}'`);
+    if (window.tlRender) window.tlRender();
   });
 
   // ── Inject tab ─────────────────────────────────────────────────────────
