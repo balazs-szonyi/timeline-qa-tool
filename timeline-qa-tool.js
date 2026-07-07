@@ -94,7 +94,14 @@
       const p = document.getElementById('tl-panel');
       if (!p) return;
       p.classList.toggle('tl-theme-dark', window._tlIsDarkTheme());
-      const items=window._tlIncidents||[], filter=window._tlFilter||'all';
+      // Per SBOF-9514/SBOF-9513 (backend Statistics Engine + provider-integration contracts):
+      // a VAR-overturned incident (goal/card/corner/penalty/sub) arrives as a Cancel* event
+      // that flips the original stat's Status to Cancelled by matching Reference/RelatedReference.
+      // The confirmed real FE mapper (TimelineUtil.mapEventStatisticsToTimeline, SBEUJE-6121)
+      // "filters to schema-mapped + Active/non-cancelled stats" — i.e. a cancelled incident is
+      // NOT shown with a struck-through/greyed style, it simply disappears from the timeline
+      // entirely, same as if it had never been sent. We mirror that here.
+      const items=(window._tlIncidents||[]).filter(i=>i.status!=='cancelled'), filter=window._tlFilter||'all';
       const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
       const GOALS=['goal','ownGoal','penaltyScored'], CARDS=['yellowCard','secondYellow','redCard'];
       const hasGoals=items.some(i=>GOALS.includes(i.type)), hasCards=items.some(i=>CARDS.includes(i.type)), hasCorners=items.some(i=>i.type==='corner');
@@ -335,7 +342,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.26';
+  const TL_TOOL_VERSION = 'v0.1.27';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -415,6 +422,9 @@
     .tl-qa-inc-row-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
     .tl-qa-inc-remove { background: none; border: none; color: #f5a0a0; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 4px; flex: none; }
     .tl-qa-inc-remove:hover { color: #fff; }
+    .tl-qa-inc-cancel, .tl-qa-inc-restore { background: none; border: none; color: #ffb066; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 4px; flex: none; }
+    .tl-qa-inc-cancel:hover, .tl-qa-inc-restore:hover { color: #fff; }
+    .tl-qa-inc-cancelled-tag { color: #ffb066; font-size: 10px; font-weight: 600; text-transform: uppercase; }
     .tl-qa-inc-empty { font-size: 11px; color: #666; text-align: center; padding: 6px; }
     .tl-tab-indicator {
       position: absolute; left: 8px; right: 8px; bottom: 0; height: 4px;
@@ -674,13 +684,21 @@
       const label = opt ? opt.textContent : item.type;
       const minTxt = item.minute ? ` ${item.minute}${item.addedMinute ? '+' + item.addedMinute : ''}'` : '';
       const teamTxt = (item.team && !PHASE_TYPES.includes(item.type)) ? ` (${item.team})` : '';
-      return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}</span><button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
+      const cancelled = item.status === 'cancelled';
+      const cancelBtn = PHASE_TYPES.includes(item.type) ? '' : cancelled
+        ? `<button class="tl-qa-inc-restore" data-id="${item._id}" title="Restore (undo VAR cancellation)">↺</button>`
+        : `<button class="tl-qa-inc-cancel" data-id="${item._id}" title="Cancel via VAR (SBOF-9514/9513)">⊘</button>`;
+      const cancelledTag = cancelled ? ' <span class="tl-qa-inc-cancelled-tag">cancelled</span>' : '';
+      return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}${cancelledTag}</span>${cancelBtn}<button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
     }).join('');
   }
   $('tl-qa-inc-list').addEventListener('click', e => {
-    const btn = e.target.closest('.tl-qa-inc-remove');
-    if (!btn) return;
-    window.tlRemoveIncident(btn.dataset.id);
+    const removeBtn = e.target.closest('.tl-qa-inc-remove');
+    if (removeBtn) { window.tlRemoveIncident(removeBtn.dataset.id); return; }
+    const cancelBtn = e.target.closest('.tl-qa-inc-cancel');
+    if (cancelBtn) { window.tlCancelIncident(cancelBtn.dataset.id); return; }
+    const restoreBtn = e.target.closest('.tl-qa-inc-restore');
+    if (restoreBtn) { window.tlRestoreIncident(restoreBtn.dataset.id); return; }
   });
   window.tlRemoveIncident = function(id) {
     if (!window._tlIncidents) return;
@@ -689,6 +707,29 @@
     renderIncidentList();
     tlUpdateCount();
     tlStatus('Incident removed');
+  };
+  // Per SBOF-9514 (SB.StatisticsEngine)/SBOF-9513 (sb-provider-integration): a Cancel* event
+  // (e.g. CancelGoal) matches a prior stat by Reference/RelatedReference and flips its Status
+  // to Cancelled — it does NOT delete the record. We keep the incident in the QA test-data
+  // list (so testers can see/undo it) but exclude it from the rendered timeline via tlRender's
+  // status!=='cancelled' filter, matching the confirmed real mapper behavior.
+  window.tlCancelIncident = function(id) {
+    if (!window._tlIncidents) return;
+    const inc = window._tlIncidents.find(it => String(it._id) === String(id));
+    if (!inc) return;
+    inc.status = 'cancelled';
+    if (window.tlRender) window.tlRender();
+    renderIncidentList();
+    tlStatus('Incident cancelled via VAR (removed from timeline, kept in list)');
+  };
+  window.tlRestoreIncident = function(id) {
+    if (!window._tlIncidents) return;
+    const inc = window._tlIncidents.find(it => String(it._id) === String(id));
+    if (!inc) return;
+    delete inc.status;
+    if (window.tlRender) window.tlRender();
+    renderIncidentList();
+    tlStatus('Incident restored');
   };
 
   // ── Mode toggle ────────────────────────────────────────────────────────
