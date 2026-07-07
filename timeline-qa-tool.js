@@ -20,7 +20,7 @@
       .tl-chips{display:flex;gap:8px;padding:14px 16px 0;flex-wrap:wrap}
       .tl-chip{padding:6px 16px;border:1.5px solid #c4c6cc;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;background:#fff;color:#040406;font-family:inherit}
       .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fff}
-      .tl-hbar-wrap{padding:32px 16px 32px}
+      .tl-hbar-wrap{padding:48px 16px 48px}
       .tl-hbar-track{position:relative;height:4px;border-radius:2px;background:#e2e3e8}
       .tl-hbar-progress{position:absolute;top:0;height:100%;background:#40b840;border-radius:2px}
       .tl-hbar-knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#40b840;z-index:2}
@@ -195,10 +195,16 @@
       const iconHtml = t => ICON_SVG[t] ? ICON_SVG[t](ICON_COLOR[t]) : '';
       const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
-      // Per the "Overlap requirements for incident timeline" spec: two+ incidents at the
-      // exact same minute (normal time) or same added-minute (injury time) that land on the
-      // same horizontal slot AND the same team side must be ranked "one above the other"
-      // (stacked vertically) instead of drawn exactly on top of each other.
+      // Per the "Overlap requirements for incident timeline" spec (Timeline - FE Confluence)
+      // and SBEUJE-6150 AC: two+ incidents at the exact same minute (normal time) or same
+      // added-minute (injury time) that land on the same horizontal slot AND the same team
+      // side must be ranked "one above the other" (stacked vertically) instead of drawn
+      // exactly on top of each other. SBEUJE-6150 caps this at "2 stacks of 3 incidents per
+      // team" — once a 4th incident lands in the SAME side+minute slot, a new stacking
+      // "column" starts, shifted left of the original slot ("when the 6th card arrives, the
+      // whole group will move to the left to make space") instead of piling indefinitely
+      // upward into the filter chips row above the track.
+      const MAX_STACK=3, STACK_COL_SHIFT=3;
       const dotSpecs=hItems.map(it=>{
         const min=it.minute||0, added=it.addedMinute||0;
         // Own goals stay on the side of the team whose player committed them (item.team,
@@ -215,13 +221,17 @@
       });
       const stackRank=new Map();
       for(const spec of dotSpecs){
-        const rank=(stackRank.get(spec.groupKey)||0);
-        stackRank.set(spec.groupKey,rank+1);
-        spec.rank=rank;
+        const seq=(stackRank.get(spec.groupKey)||0);
+        stackRank.set(spec.groupKey,seq+1);
+        // Every MAX_STACK-th incident in the same side+minute slot starts a new column,
+        // shifted left, instead of continuing to stack past the design's committed max.
+        spec.col=Math.floor(seq/MAX_STACK);
+        spec.rank=seq%MAX_STACK;
       }
-      for(const {it,dp,top,rank} of dotSpecs){
+      for(const {it,dp,top,rank,col} of dotSpecs){
         const offsetPx=8+rank*13;
-        hDots+=`<div class="tl-hbar-dot" style="left:${dp}%;top:calc(50% ${top?'- '+offsetPx+'px':'+ '+offsetPx+'px'})">${iconHtml(it.type)}</div>`;
+        const dpShifted=Math.max(0,Math.min(100,dp-col*STACK_COL_SHIFT));
+        hDots+=`<div class="tl-hbar-dot" style="left:${dpShifted}%;top:calc(50% ${top?'- '+offsetPx+'px':'+ '+offsetPx+'px'})">${iconHtml(it.type)}</div>`;
       }
       const sorted=[...items].reverse();
       const visible=filter==='all'?sorted:filter==='goals'?sorted.filter(i=>PHASES.includes(i.type)||GOALS.includes(i.type)):filter==='cards'?sorted.filter(i=>PHASES.includes(i.type)||CARDS.includes(i.type)):filter==='corners'?sorted.filter(i=>PHASES.includes(i.type)||i.type==='corner'):sorted;
@@ -347,7 +357,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.28';
+  const TL_TOOL_VERSION = 'v0.1.29';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -453,14 +463,6 @@
     </div>
     <div id="tl-qa-body">
 
-      <div class="tl-qa-label">Injection mode</div>
-      <div id="tl-qa-mode-row">
-        <button class="tl-qa-mode-btn" id="tl-mode-data">📊 Data only</button>
-        <button class="tl-qa-mode-btn demo" id="tl-mode-demo">🎨 Demo (mock UI)</button>
-      </div>
-      <div id="tl-qa-mode-desc">Injects incidents only — deployed code renders</div>
-
-      <hr class="tl-qa-sep">
       <div class="tl-qa-label">Feature flag</div>
       <div class="tl-qa-row">
         <label class="tl-qa-toggle">
@@ -469,6 +471,17 @@
         </label>
         <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
       </div>
+      <div class="tl-qa-row">
+        <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
+      </div>
+
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-label">Injection mode</div>
+      <div id="tl-qa-mode-row">
+        <button class="tl-qa-mode-btn" id="tl-mode-data">📊 Data only</button>
+        <button class="tl-qa-mode-btn demo" id="tl-mode-demo">🎨 Demo (mock UI)</button>
+      </div>
+      <div id="tl-qa-mode-desc">Injects incidents only — deployed code renders</div>
 
       <hr class="tl-qa-sep">
       <div class="tl-qa-label">Match config</div>
@@ -838,6 +851,20 @@
     if (!cfg) { tlStatus('Config path not found', true); return; }
     cfg.incidentsTimeline = { ...(cfg.incidentsTimeline || {}), enabled: $('tl-feat-cb').checked };
     tlStatus(`incidentsTimeline.enabled = ${$('tl-feat-cb').checked}`);
+  });
+
+  // ── Expose obgRt ─────────────────────────────────────────────────────────
+  // Mirrors the Sportsbook Tool's own "Expose obg/xSbState and obgRt" button
+  // (reloadPageWithFeature("exposeObgStateAndRt") -> appends ?exposeObgState=true&
+  // exposeObgRt=true to the URL and reloads self) so testers don't need to separately
+  // run the Sportsbook Tool just to unlock window.obgRt for our Match-tab-sync feature.
+  $('tl-expose-obgrt').addEventListener('click', () => {
+    const url = new URL(window.location.href.replace(/\/$/, ''));
+    url.searchParams.delete('exposeObgState');
+    url.searchParams.append('exposeObgState', 'true');
+    url.searchParams.delete('exposeObgRt');
+    url.searchParams.append('exposeObgRt', 'true');
+    window.open(url, '_self');
   });
 
   // ── Match config (Expected Period Duration, SBOF-9706/9619/9809) ────────
