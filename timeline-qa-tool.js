@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.35';
+  const TL_TOOL_VERSION = 'v0.1.36';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1111,7 +1111,17 @@
         matches: ['<all_urls>'],
         js: ['content.js'],
         run_at: 'document_start',
-        all_frames: true
+        all_frames: true,
+        // CRITICAL: content scripts default to an ISOLATED world — they share
+        // the DOM with the page, but NOT the page's own `window` object/JS
+        // heap, so a plain `window.foo = ...` or Object.defineProperty(window,
+        // ...) done here would be invisible to the page's own scripts (this
+        // was the actual bug: the override applied inside our own isolated
+        // window, never touching the real obgClientEnvironmentConfig the app
+        // reads). "world": "MAIN" (Chrome 111+) makes this script execute
+        // directly in the page's own JS context instead, so our
+        // Object.defineProperty override actually affects what the app sees.
+        world: 'MAIN'
       }]
     }, null, 2);
   }
@@ -1191,7 +1201,7 @@
   }
 
   const AUTOOV_INSTRUCTIONS = {
-    ext: '1) Click "Download helper files" (manifest.json + content.js).\n2) Put both files in one empty folder.\n3) Chrome → chrome://extensions → enable "Developer mode" → "Load unpacked" → select that folder.\n4) Done. Every future reload on any page auto-applies the override while the extension stays enabled — no running process needed. To change the value later, just toggle the checkbox above and click Apply; no reinstall needed.',
+    ext: '1) Click "Download helper files" (manifest.json + content.js).\n2) Put both files in one empty folder.\n3) Chrome → chrome://extensions → enable "Developer mode" → "Load unpacked" → select that folder.\n4) Done. Every future reload on any page auto-applies the override while the extension stays enabled — no running process needed. To change the value later, just toggle the checkbox above and click Apply; no reinstall needed.\n\n⚠ Already installed an older version? Re-download both files (v0.1.36+ adds "world":"MAIN" to manifest.json — a critical fix, earlier versions ran in an isolated JS context that never actually reached the page\'s real config), overwrite the two files in your folder, then click the ↻ reload icon on the extension card in chrome://extensions (no need to remove/re-add it).',
     cdp: '1) Click "Download helper files" (tl-override-companion.js + package.json).\n2) Put both in one folder, then in a terminal there run: npm install\n3) Fully close Chrome, then relaunch it with the flag --remote-debugging-port=9222 (e.g. add it to your Chrome shortcut target).\n4) In the same folder run: node tl-override-companion.js — keep this terminal open.\n5) Every reload on any tab now gets the override applied automatically, for as long as the script keeps running.'
   };
 
