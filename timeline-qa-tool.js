@@ -1,4 +1,13 @@
 (function(){
+  // ── Theme detection ──────────────────────────────────────────────────────
+  // The site reflects its active theme as a class on <body> ("light"/"dark",
+  // e.g. class="mat-typography dark"). We mirror that onto our injected
+  // #tl-panel (via .tl-theme-dark) so our own CSS can react to it, since our
+  // markup lives outside the site's own themed component tree.
+  window._tlIsDarkTheme = function() {
+    return document.body.classList.contains('dark');
+  };
+
   // ── Demo CSS ───────────────────────────────────────────────────────────
   window._tqInjectDemoStyles = function() {
     if (document.getElementById('tl-styles')) return;
@@ -47,6 +56,26 @@
       .tl-sub-out .tl-sub-arrow{color:#dd2727}.tl-sub-in .tl-sub-arrow{color:#61aa00}
       .tl-sub-list{display:flex;flex-direction:column;row-gap:4px;margin-top:2px}
       .tl-disclaimer{padding:10px 16px;font-size:11px;color:#999;text-align:center;border-top:1px solid #e2e3e8}
+
+      /* ── Dark theme overrides (colors sampled from the Figma dark-theme export) ── */
+      #tl-panel.tl-theme-dark{background:#181A22}
+      #tl-panel.tl-theme-dark .tl-chip{border-color:#777A88;background:transparent;color:#B8B9BB}
+      #tl-panel.tl-theme-dark .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fff}
+      #tl-panel.tl-theme-dark .tl-hbar-track{background:#353743}
+      #tl-panel.tl-theme-dark .tl-list::before{background:#353743}
+      #tl-panel.tl-theme-dark .tl-minute{background:#181A22;color:#ff6600}
+      #tl-panel.tl-theme-dark .tl-phase{background:#353743;color:rgba(255,255,255,.7)}
+      #tl-panel.tl-theme-dark .tl-phase.tl-phase-injury{color:#dd2727}
+      #tl-panel.tl-theme-dark .tl-phase-score-inline{color:rgba(255,255,255,.87)}
+      #tl-panel.tl-theme-dark .tl-phase.tl-phase-title{background:#353743}
+      #tl-panel.tl-theme-dark .tl-phase-scoreline{background:#252731;color:rgba(255,255,255,.7)}
+      #tl-panel.tl-theme-dark .tl-phase-scoreline .tl-phase-score{color:rgba(255,255,255,.87)}
+      #tl-panel.tl-theme-dark .tl-icon{background:#181A22;border-color:#33353f}
+      #tl-panel.tl-theme-dark .tl-inc-label{color:#f5f5f7}
+      #tl-panel.tl-theme-dark .tl-player,#tl-panel.tl-theme-dark .tl-assist{color:rgba(255,255,255,.87)}
+      #tl-panel.tl-theme-dark .tl-score{background:#353743;color:#f5f5f7}
+      #tl-panel.tl-theme-dark .tl-sub-out,#tl-panel.tl-theme-dark .tl-sub-in{background:#353743;color:rgba(255,255,255,.7)}
+      #tl-panel.tl-theme-dark .tl-disclaimer{color:#8b8d99;border-top-color:#353743}
     `;
     document.head.appendChild(s);
   }
@@ -62,6 +91,7 @@
     window.tlRender = function() {
       const p = document.getElementById('tl-panel');
       if (!p) return;
+      p.classList.toggle('tl-theme-dark', window._tlIsDarkTheme());
       const items=window._tlIncidents||[], filter=window._tlFilter||'all';
       const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
       const GOALS=['goal','ownGoal','penaltyScored'], CARDS=['yellowCard','secondYellow','redCard'];
@@ -260,7 +290,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.22';
+  const TL_TOOL_VERSION = 'v0.1.23';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -797,11 +827,15 @@
       tabBtn.innerHTML = '<span>Timeline</span><div class="tl-tab-indicator"></div>';
       // Match the real obg-tab-label sizing/typography (48px fixed height, 0 8px padding,
       // rgba(4,4,6,.7) default text colour, 14px/16.8px DM Sans) so the tab lines up with its siblings.
-      tabBtn.style.cssText = 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;box-sizing:border-box;height:48px;padding:0 8px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:inherit;font-weight:400;line-height:16.8px;color:rgba(4,4,6,.7);white-space:nowrap;flex-shrink:0';
+      // The inactive text colour must invert for dark theme (site uses light text on dark bg),
+      // so we compute it dynamically instead of hardcoding the light-theme value.
+      const inactiveColor = () => window._tlIsDarkTheme() ? 'rgba(255,255,255,.7)' : 'rgba(4,4,6,.7)';
+      tabBtn.style.cssText = 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;box-sizing:border-box;height:48px;padding:0 8px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:inherit;font-weight:400;line-height:16.8px;white-space:nowrap;flex-shrink:0';
+      tabBtn.style.color = inactiveColor();
       scrollerEl.appendChild(tabBtn);
 
       const setActive = (active) => {
-        tabBtn.style.color = active ? '#ff6600' : 'rgba(4,4,6,.7)';
+        tabBtn.style.color = active ? '#ff6600' : inactiveColor();
         tabBtn.classList.toggle('tl-active', active);
         // The real tabs share a single Angular-managed `.obg-tabs-underline` indicator that only
         // moves when a REAL tab is clicked — Angular has no idea our injected tab exists, so it
@@ -810,6 +844,17 @@
         const underline = (scrollerEl.closest('obg-tabs') || document).querySelector('.obg-tabs-underline');
         if (underline) underline.style.opacity = active ? '0' : '';
       };
+
+      // React live to the user toggling Light/Dark in Settings, without needing
+      // to reload the page or re-inject the tool. Guarded with a global flag
+      // since this whole block only runs once anyway (first injection).
+      if (!window._tlThemeObserverInstalled) {
+        window._tlThemeObserverInstalled = true;
+        new MutationObserver(() => {
+          if (!tabBtn.classList.contains('tl-active')) tabBtn.style.color = inactiveColor();
+          if (typeof window.tlRender === 'function') window.tlRender();
+        }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
 
       tabBtn.addEventListener('click', () => {
         const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
