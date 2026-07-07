@@ -171,7 +171,9 @@
       const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
       for(const it of hItems){
-        const min=it.minute||0, added=it.addedMinute||0, top=it.team==='home';
+        const min=it.minute||0, added=it.addedMinute||0;
+        // Same benefiting-side convention as the vertical list (see isHome comment below).
+        const top=it.type==='ownGoal'?it.team!=='home':it.team==='home';
         let dp;
         if(min===45&&added>0) dp=inj1Map.get(it);
         else if(min===90&&added>0) dp=inj2Map.get(it);
@@ -196,7 +198,14 @@
           rows+=`<div class="tl-phase-group"><div class="${titleClass}">${iconWrap}${txt}</div>${scoreRow}</div>`;
         }
         else{
-          const isHome=item.team==='home';
+          // Own goals are credited to (and displayed on) the BENEFITING team's side —
+          // per the Confluence data-provider mapping ("OWN GOAL HOME" event_code:261
+          // shares the same related_event_code as "GOAL HOME" 1029), an own goal is
+          // just a Goal event scored against the team whose player put it in their own
+          // net. `item.team` here is authored/received as the scoring PLAYER's own team,
+          // so the row must render on the opposite side (matching the score-bolding
+          // logic in scoringSideOf/updateScorePreview above, which already does this).
+          const isHome=item.type==='ownGoal'?item.team!=='home':item.team==='home';
           const icon=`<div class="tl-icon">${iconHtml(item.type)}</div>`;
           let body=`<div class="tl-inc-label">${LABEL[item.type]||item.type}</div>`;
           if(item.type==='substitution'){body+=`<div class="tl-sub-list"><span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span><span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span></div>`;}
@@ -205,10 +214,9 @@
             if(item.assist)body+=`<div class="tl-assist">(Assist: ${item.assist})</div>`;
             if(item.score){
               const sp=String(item.score).split('-').map(s=>s.trim()), h=sp[0]||'', a=sp[1]||'';
-              // Own goals credit the OPPOSITE side of the scoring player's own team, so the
-              // bolded (changed) number must follow the actual scoring side, not the item's
-              // display side (isHome), otherwise own goals highlight the wrong number.
-              const scoringSide=item.type==='ownGoal'?(isHome?'away':'home'):(isHome?'home':'away');
+              // isHome already reflects the benefiting/display side (own goals flipped
+              // above), so the bolded (changed) number simply follows isHome now.
+              const scoringSide=isHome?'home':'away';
               body+=`<div class="tl-score"><span style="font-weight:${scoringSide==='home'?800:600}">${h}</span> - <span style="font-weight:${scoringSide==='away'?800:600}">${a}</span></div>`;
             }
           }
@@ -290,7 +298,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.24';
+  const TL_TOOL_VERSION = 'v0.1.25';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
