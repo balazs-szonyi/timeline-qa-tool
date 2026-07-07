@@ -371,12 +371,13 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.31';
+  const TL_TOOL_VERSION = 'v0.1.32';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
     const opening = ep.style.display === 'none';
     ep.style.display = opening ? 'flex' : 'none';
+    try { localStorage.setItem('tlQaOpen', opening ? '1' : '0'); } catch (e) {}
     // Re-detect the live incidentsTimeline.enabled value every time the panel is
     // reopened (not just on first injection), since the host page's config may only
     // have finished loading after our first init, or may have changed since.
@@ -414,7 +415,25 @@
       font-size: 16px; padding: 0 4px; line-height: 1;
     }
     #tl-qa-close:hover { color: #fff; }
+    #tl-qa-minimize {
+      background: none; border: none; color: #888; cursor: pointer;
+      font-size: 14px; padding: 0 4px; line-height: 1; transition: transform .15s;
+    }
+    #tl-qa-minimize:hover { color: #fff; }
+    #tl-qa-panel.tl-minimized #tl-qa-body { display: none; }
     #tl-qa-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .tl-qa-section-header {
+      display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    }
+    .tl-qa-section-header .tl-qa-label { margin-bottom: 0; }
+    .tl-qa-collapse-btn {
+      background: none; border: none; color: #888; cursor: pointer;
+      font-size: 11px; padding: 2px 4px; line-height: 1; transition: transform .15s;
+    }
+    .tl-qa-collapse-btn:hover { color: #fff; }
+    .tl-qa-section-body { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .tl-qa-section.tl-qa-collapsed .tl-qa-collapse-btn { transform: rotate(-90deg); }
+    .tl-qa-section.tl-qa-collapsed .tl-qa-section-body { display: none; }
     #tl-qa-mode-row { display:flex;gap:4px;margin-bottom:4px; }
     .tl-qa-mode-btn { flex:1;padding:6px 8px;border:none;border-radius:5px;background:#37374a;color:#ccc;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s; }
     .tl-qa-mode-btn.active { background:#2e7d32;color:#fff; }
@@ -480,102 +499,128 @@
         <div id="tl-qa-header-title"><span>⏱ Timeline QA</span><span id="tl-qa-version">${TL_TOOL_VERSION}</span></div>
         <a id="tl-qa-email" href="mailto:balazs.szonyi@betssongroup.com">balazs.szonyi@betssongroup.com</a>
       </div>
-      <button id="tl-qa-close">✕</button>
+      <button id="tl-qa-minimize" title="Collapse tool to header only">▾</button>
+      <button id="tl-qa-close" title="Close tool">✕</button>
     </div>
     <div id="tl-qa-body">
 
-      <div class="tl-qa-label">Feature flag</div>
-      <div class="tl-qa-row">
-        <label class="tl-qa-toggle">
-          <input type="checkbox" id="tl-feat-cb">
-          <span style="font-size:12px" id="tl-feat-label">incidentsTimeline.disabled</span>
-        </label>
-        <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
-      </div>
-      <div class="tl-qa-row">
-        <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
-      </div>
-
-      <hr class="tl-qa-sep">
-      <div class="tl-qa-label">Injection mode</div>
-      <div id="tl-qa-mode-row">
-        <button class="tl-qa-mode-btn" id="tl-mode-data">📊 Data only</button>
-        <button class="tl-qa-mode-btn demo" id="tl-mode-demo">🎨 Demo (mock UI)</button>
-      </div>
-      <div id="tl-qa-mode-desc">Injects incidents only — deployed code renders</div>
-
-      <hr class="tl-qa-sep">
-      <div class="tl-qa-label">Match config</div>
-      <div class="tl-qa-row">
-        <input class="tl-qa-input" type="number" id="tl-period-dur" placeholder="Period length (min)" value="45" min="1" max="90" style="flex:1">
-        <button class="tl-qa-btn grey" id="tl-period-apply" style="flex:none;padding:6px 10px">Apply</button>
-      </div>
-      <div style="font-size:11px;color:#999;padding:2px 2px 0">Per SBOF-9706/9619/9809 (Expected Period Duration), each half's length is configurable — not fixed 45' — for testing extra-time/non-standard halves.</div>
-
-      <hr class="tl-qa-sep">
-
-      <div class="tl-qa-row">
-        <button class="tl-qa-btn" id="tl-inject-btn">Inject Tab</button>
-        <button class="tl-qa-btn red" id="tl-clear-btn">Clear</button>
-      </div>
-      <div class="tl-qa-row">
-        <button class="tl-qa-btn purple" id="tl-demo-btn" style="width:100%">🎬 Load Full Demo Match</button>
+      <div class="tl-qa-section" data-section="feature">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Feature flag</span><button class="tl-qa-collapse-btn" data-target="feature">▾</button></div>
+        <div class="tl-qa-section-body">
+          <div class="tl-qa-row">
+            <label class="tl-qa-toggle">
+              <input type="checkbox" id="tl-feat-cb">
+              <span style="font-size:12px" id="tl-feat-label">incidentsTimeline.disabled</span>
+            </label>
+            <button class="tl-qa-btn grey" id="tl-feat-apply" style="flex:none;padding:6px 10px">Apply</button>
+          </div>
+          <div style="font-size:10px;color:#999;padding:0 2px">In-memory only — does NOT survive a reload. The real Timeline tab (event-main-tabs.container.ts) only reads this flag once, at component construction, so a reload is needed to see it take effect there — but reload also re-fetches the actual environment value, discarding this override.</div>
+          <div class="tl-qa-row">
+            <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
+          </div>
+        </div>
       </div>
 
       <hr class="tl-qa-sep">
-      <div class="tl-qa-label">Add incident</div>
-
-      <div class="tl-qa-row">
-        <select class="tl-qa-input" id="tl-type">
-          <option value="goal">⚽ Goal</option>
-          <option value="ownGoal">⚽ Own Goal</option>
-          <option value="yellowCard">🟨 Yellow Card</option>
-          <option value="secondYellow">🟨 Second Yellow</option>
-          <option value="redCard">🟥 Red Card</option>
-          <option value="corner">🚩 Corner</option>
-          <option value="substitution">🔄 Substitution</option>
-          <option value="penaltyScored">🥅 Penalty Scored</option>
-          <option value="penaltyMissed">✖ Penalty Missed</option>
-          <option value="penaltyAwarded">⚠️ Penalty (awarded)</option>
-          <option value="varReviewStart">📺 VAR Review Starts</option>
-          <option value="varReviewEnd">📺 VAR Review Ends</option>
-          <option value="kickOff">🟢 Kick Off</option>
-          <option value="halfTime">⏸ Half Time</option>
-          <option value="secondHalfStart">▶️ Start of 2nd Half</option>
-          <option value="fullTime">🏁 Full Time</option>
-          <option value="injuryTime">⏱ Injury Time</option>
-        </select>
-        <select class="tl-qa-input" id="tl-team" style="width:80px;flex:none">
-          <option value="home">Home</option>
-          <option value="away">Away</option>
-        </select>
+      <div class="tl-qa-section" data-section="mode">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Injection mode</span><button class="tl-qa-collapse-btn" data-target="mode">▾</button></div>
+        <div class="tl-qa-section-body">
+          <div id="tl-qa-mode-row">
+            <button class="tl-qa-mode-btn" id="tl-mode-data">📊 Data only</button>
+            <button class="tl-qa-mode-btn demo" id="tl-mode-demo">🎨 Demo (mock UI)</button>
+          </div>
+          <div id="tl-qa-mode-desc">Injects incidents only — deployed code renders</div>
+        </div>
       </div>
-
-      <div class="tl-qa-row" id="tl-row-base">
-        <input class="tl-qa-input" type="number" id="tl-min" placeholder="Min" value="45" min="1" max="120">
-        <input class="tl-qa-input" type="text" id="tl-player" placeholder="Player name">
-      </div>
-
-      <div class="tl-qa-row" id="tl-row-goal">
-        <input class="tl-qa-input" type="text" id="tl-assist" placeholder="Assist (opt)">
-        <input class="tl-qa-input" type="text" id="tl-score" placeholder="Score e.g. 1-0">
-      </div>
-
-      <div class="tl-qa-row" id="tl-row-sub" style="display:none">
-        <input class="tl-qa-input" type="text" id="tl-pout" placeholder="Player out">
-        <input class="tl-qa-input" type="text" id="tl-pin" placeholder="Player in">
-      </div>
-
-      <div class="tl-qa-row" id="tl-row-phase" style="display:none">
-        <input class="tl-qa-input" type="text" id="tl-scoretext" placeholder="Score text e.g. 0–1">
-        <input class="tl-qa-input" type="number" id="tl-extra" placeholder="+min" style="width:60px;flex:none">
-      </div>
-
-      <button class="tl-qa-btn green" id="tl-add-btn" style="width:100%">＋ Add Incident</button>
 
       <hr class="tl-qa-sep">
-      <div class="tl-qa-label">Injected incidents</div>
-      <div id="tl-qa-inc-list"></div>
+      <div class="tl-qa-section" data-section="config">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Match config</span><button class="tl-qa-collapse-btn" data-target="config">▾</button></div>
+        <div class="tl-qa-section-body">
+          <div class="tl-qa-row">
+            <input class="tl-qa-input" type="number" id="tl-period-dur" placeholder="Period length (min)" value="45" min="1" max="90" style="flex:1">
+            <button class="tl-qa-btn grey" id="tl-period-apply" style="flex:none;padding:6px 10px">Apply</button>
+          </div>
+          <div style="font-size:11px;color:#999;padding:2px 2px 0">Per SBOF-9706/9619/9809 (Expected Period Duration), each half's length is configurable — not fixed 45' — for testing extra-time/non-standard halves.</div>
+        </div>
+      </div>
+
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-section" data-section="actions">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Actions</span><button class="tl-qa-collapse-btn" data-target="actions">▾</button></div>
+        <div class="tl-qa-section-body">
+          <div class="tl-qa-row">
+            <button class="tl-qa-btn" id="tl-inject-btn">Inject Tab</button>
+            <button class="tl-qa-btn red" id="tl-clear-btn">Clear</button>
+          </div>
+          <div class="tl-qa-row">
+            <button class="tl-qa-btn purple" id="tl-demo-btn" style="width:100%">🎬 Load Full Demo Match</button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-section" data-section="add">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Add incident</span><button class="tl-qa-collapse-btn" data-target="add">▾</button></div>
+        <div class="tl-qa-section-body">
+
+          <div class="tl-qa-row">
+            <select class="tl-qa-input" id="tl-type">
+              <option value="goal">⚽ Goal</option>
+              <option value="ownGoal">⚽ Own Goal</option>
+              <option value="yellowCard">🟨 Yellow Card</option>
+              <option value="secondYellow">🟨 Second Yellow</option>
+              <option value="redCard">🟥 Red Card</option>
+              <option value="corner">🚩 Corner</option>
+              <option value="substitution">🔄 Substitution</option>
+              <option value="penaltyScored">🥅 Penalty Scored</option>
+              <option value="penaltyMissed">✖ Penalty Missed</option>
+              <option value="penaltyAwarded">⚠️ Penalty (awarded)</option>
+              <option value="varReviewStart">📺 VAR Review Starts</option>
+              <option value="varReviewEnd">📺 VAR Review Ends</option>
+              <option value="kickOff">🟢 Kick Off</option>
+              <option value="halfTime">⏸ Half Time</option>
+              <option value="secondHalfStart">▶️ Start of 2nd Half</option>
+              <option value="fullTime">🏁 Full Time</option>
+              <option value="injuryTime">⏱ Injury Time</option>
+            </select>
+            <select class="tl-qa-input" id="tl-team" style="width:80px;flex:none">
+              <option value="home">Home</option>
+              <option value="away">Away</option>
+            </select>
+          </div>
+
+          <div class="tl-qa-row" id="tl-row-base">
+            <input class="tl-qa-input" type="number" id="tl-min" placeholder="Min" value="45" min="1" max="120">
+            <input class="tl-qa-input" type="text" id="tl-player" placeholder="Player name">
+          </div>
+
+          <div class="tl-qa-row" id="tl-row-goal">
+            <input class="tl-qa-input" type="text" id="tl-assist" placeholder="Assist (opt)">
+            <input class="tl-qa-input" type="text" id="tl-score" placeholder="Score e.g. 1-0">
+          </div>
+
+          <div class="tl-qa-row" id="tl-row-sub" style="display:none">
+            <input class="tl-qa-input" type="text" id="tl-pout" placeholder="Player out">
+            <input class="tl-qa-input" type="text" id="tl-pin" placeholder="Player in">
+          </div>
+
+          <div class="tl-qa-row" id="tl-row-phase" style="display:none">
+            <input class="tl-qa-input" type="text" id="tl-scoretext" placeholder="Score text e.g. 0–1">
+            <input class="tl-qa-input" type="number" id="tl-extra" placeholder="+min" style="width:60px;flex:none">
+          </div>
+
+          <button class="tl-qa-btn green" id="tl-add-btn" style="width:100%">＋ Add Incident</button>
+        </div>
+      </div>
+
+      <hr class="tl-qa-sep">
+      <div class="tl-qa-section" data-section="list">
+        <div class="tl-qa-section-header"><span class="tl-qa-label">Injected incidents</span><button class="tl-qa-collapse-btn" data-target="list">▾</button></div>
+        <div class="tl-qa-section-body">
+          <div id="tl-qa-inc-list"></div>
+        </div>
+      </div>
 
       <div id="tl-qa-status"></div>
       <div id="tl-qa-count"></div>
@@ -597,6 +642,54 @@
   function tlUpdateCount() {
     const n = (window._tlIncidents || []).length;
     $('tl-qa-count').textContent = n > 0 ? `${n} incident${n !== 1 ? 's' : ''} injected` : '';
+  }
+
+  // ── Panel state persistence (open/closed, minimized, per-section collapsed) ──────
+  // The tool is a bookmarklet with no always-on host, so a real page reload (needed
+  // by "Expose obgRt" below) discards the whole injected DOM/JS — there is no way to
+  // truly auto-re-inject without a userscript manager. The practical compromise: we
+  // remember state in localStorage (survives across reloads, same origin) and restore
+  // it the next time the tester re-clicks the bookmarklet, instead of always starting
+  // from a blank default.
+  function tlLsGet(key, fallback) {
+    try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function tlLsSet(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) {}
+  }
+
+  // Per-section accordion collapse/expand.
+  let collapsedSections;
+  try { collapsedSections = new Set(JSON.parse(tlLsGet('tlQaCollapsedSections', '[]'))); }
+  catch (e) { collapsedSections = new Set(); }
+  panel.querySelectorAll('.tl-qa-section').forEach(sec => {
+    const key = sec.dataset.section;
+    if (collapsedSections.has(key)) sec.classList.add('tl-qa-collapsed');
+    sec.querySelector('.tl-qa-section-header').addEventListener('click', () => {
+      const collapsed = sec.classList.toggle('tl-qa-collapsed');
+      if (collapsed) collapsedSections.add(key); else collapsedSections.delete(key);
+      tlLsSet('tlQaCollapsedSections', JSON.stringify([...collapsedSections]));
+    });
+  });
+
+  // Whole-tool minimize (collapse to header only) — distinct from the ✕ close button,
+  // which fully hides the panel; this keeps the header (and re-open access) visible.
+  if (tlLsGet('tlQaMinimized', '0') === '1') panel.classList.add('tl-minimized');
+  function tlSyncMinimizeIcon() { $('tl-qa-minimize').textContent = panel.classList.contains('tl-minimized') ? '▸' : '▾'; }
+  tlSyncMinimizeIcon();
+  $('tl-qa-minimize').addEventListener('click', () => {
+    const minimized = panel.classList.toggle('tl-minimized');
+    tlLsSet('tlQaMinimized', minimized ? '1' : '0');
+    tlSyncMinimizeIcon();
+  });
+
+  // Open/closed state, restored on (re-)creation; a pending-reload flag (set right
+  // before any of our own reload-triggering actions) lets us confirm to the tester
+  // that state was indeed carried over once they re-click the bookmarklet.
+  if (tlLsGet('tlQaOpen', '1') === '0') panel.style.display = 'none';
+  if (tlLsGet('tlQaPendingReload', '0') === '1') {
+    tlLsSet('tlQaPendingReload', '0');
+    setTimeout(() => tlStatus('↻ Reloaded — panel state restored (re-click the bookmarklet after any further reload)'), 200);
   }
 
   // ── Match tab sync ───────────────────────────────────────────────────────
@@ -900,6 +993,10 @@
   // exposeObgRt=true to the URL and reloads self) so testers don't need to separately
   // run the Sportsbook Tool just to unlock window.obgRt for our Match-tab-sync feature.
   $('tl-expose-obgrt').addEventListener('click', () => {
+    // Remember that we're the ones causing the reload, so the tester gets a "state
+    // restored" confirmation next time they re-click the bookmarklet (see panel state
+    // persistence block above) instead of silently landing on a blank default panel.
+    tlLsSet('tlQaPendingReload', '1');
     const url = new URL(window.location.href.replace(/\/$/, ''));
     url.searchParams.delete('exposeObgState');
     url.searchParams.append('exposeObgState', 'true');
@@ -1199,6 +1296,6 @@
   document.addEventListener('mouseup', () => { dragging = false; });
 
   // ── Close ──────────────────────────────────────────────────────────────
-  $('tl-qa-close').addEventListener('click', () => { panel.style.display = 'none'; });
+  $('tl-qa-close').addEventListener('click', () => { panel.style.display = 'none'; tlLsSet('tlQaOpen', '0'); });
 
 })();
