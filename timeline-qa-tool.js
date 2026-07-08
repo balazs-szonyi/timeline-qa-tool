@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.38';
+  const TL_TOOL_VERSION = 'v0.1.39';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1375,6 +1375,29 @@
     }
     return null;
   }
+  // Some matches render `obg-m-event-main-tabs-container` with only the score header
+  // and no Statistics/Stream tabs (nothing to switch between), so Angular never renders
+  // the real `.obg-tabs-header-wrapper > obg-scroller > ... > [test-id=scroller-content]`
+  // tab-bar markup. Build a minimal self-contained equivalent using the SAME real CSS
+  // classes (`obg-scroller`, `obg-scroller-container`, `obg-scroller-content`) so the
+  // page's existing styles (flex row, 48px tab height, etc.) apply without us having to
+  // reinvent them, and attach it inside the container's own header — never falling back
+  // to an unrelated document-wide scroller.
+  function ensureMainTabsScroller(mainTabsEl) {
+    const header = mainTabsEl.querySelector('.obg-uiuplift-header') || mainTabsEl;
+    const scroller = document.createElement('div');
+    scroller.className = 'obg-scroller obg-tabs-header-wrapper tl-synth-scroller';
+    const container = document.createElement('div');
+    container.className = 'obg-scroller-container';
+    const content = document.createElement('div');
+    content.className = 'obg-scroller-content';
+    content.setAttribute('test-id', 'scroller-content');
+    content.style.cssText = 'display:flex;align-items:center;';
+    container.appendChild(content);
+    scroller.appendChild(container);
+    header.appendChild(scroller);
+    return content;
+  }
   function findVisiblePanelContent(scrollerEl) {
     const scope = (scrollerEl && findEventPanelContainer(scrollerEl)) || document;
     const scoped = Array.from(scope.querySelectorAll('.obg-uiuplift-panel-content'))
@@ -1413,8 +1436,20 @@
     // nav tab bar ("Matches | Outrights | Standings") renders *before* the event's own tab bar
     // in DOM order and would otherwise be picked instead, silently injecting our Timeline tab
     // into the wrong place on the page (looks like nothing happened).
-    const scrollerEl = document.querySelector('obg-m-event-main-tabs-container [test-id="scroller-content"]')
-      || document.querySelector('[test-id="scroller-content"]');
+    const mainTabsEl = document.querySelector('obg-m-event-main-tabs-container');
+    let scrollerEl = mainTabsEl && mainTabsEl.querySelector('[test-id="scroller-content"]');
+    // Some events (confirmed on sbplayground1 test env) have only a single "Match" view
+    // and no Statistics/Stream tab — Angular then never renders a tab-bar/scroller at all
+    // inside `obg-m-event-main-tabs-container` (only the score header + an empty
+    // `.obg-uiuplift-panel-content`). Falling back to the document-wide bare
+    // `[test-id="scroller-content"]` selector in that case grabs the WRONG, unrelated
+    // scroller (e.g. the page-level "Featured | All Leagues | Outrights" nav, which sits
+    // earlier in DOM order) — that was the actual bug reported. Instead, synthesize a
+    // minimal real-markup tab-bar host inside the container's own header so the tab still
+    // lands in the correct widget even when it currently has zero real tabs.
+    if (!scrollerEl && mainTabsEl) scrollerEl = ensureMainTabsScroller(mainTabsEl);
+    // True last resort: no main-tabs container on the page at all (not a match/event page).
+    if (!scrollerEl && !mainTabsEl) scrollerEl = document.querySelector('[test-id="scroller-content"]');
     const panelHostEl = findVisiblePanelContent(scrollerEl);
     if (!scrollerEl || !panelHostEl) {
       tlStatus('⚠ No event tab bar found — navigate to a specific match page first (not a listing/odds page)', true);
@@ -1538,6 +1573,9 @@
     window._tlIncidents = [];
     window._tlInjected  = false;
     ['tl-tab-btn','tl-panel','tl-styles'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+    // Remove our synthetic tab-bar host too (only present when the real event had no
+    // Statistics/Stream tabs and we had to build our own scroller to attach into).
+    document.querySelectorAll('.tl-synth-scroller').forEach(el => el.remove());
     // Restore panel content children
     document.querySelectorAll('.obg-uiuplift-panel-content').forEach(el => {
       Array.from(el.children).forEach(c => c.style.display = '');
