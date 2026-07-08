@@ -559,6 +559,18 @@
       // dedicated, narrower list here so the horizontal bar stays spec-accurate.
       const HORIZ_GOALS=['goal','ownGoal'];
       const hItems=items.filter(i=>!PHASES.includes(i.type)&&(HORIZ_GOALS.includes(i.type)||CARDS.includes(i.type)));
+      // Per user-reported bug: classifying an incident's half via raw minute (e.g.
+      // "minute > PD => half 2") is ambiguous for stoppage-time incidents, since a
+      // "45+2'" event and a genuine 2nd-half "47'" event both have minute values that
+      // can straddle PD depending on how they were entered. The robust fix (matching
+      // real broadcast semantics): an incident belongs to half 2 only once a Half Time
+      // (or Start of 2nd Half) incident has actually been added and sorts before it —
+      // until that marker exists, EVERYTHING (including any stoppage-time incidents)
+      // belongs to half 1, full stop.
+      const halfBoundary = [...items].sort((a,b)=>sortKey(a)-sortKey(b))
+        .find(it=>it.type==='halfTime'||it.type==='secondHalfStart');
+      const halfBoundaryKey = halfBoundary ? sortKey(halfBoundary) : null;
+      function isHalf2(it) { return halfBoundaryKey != null && sortKey(it) > halfBoundaryKey; }
       // Per "When the match starts we should colour the 1st part" (Timeline - FE Confluence
       // spec, horizontal timeline section): the very first of the 90 one-minute sections is
       // coloured in immediately at kick off, before any other incident exists — the match
@@ -630,8 +642,8 @@
         list.forEach(it=>map.set(it,posByAdded.get(it.addedMinute||0)));
         return map;
       }
-      const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
-      const inj2Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD*2&&(it.addedMinute||0)>0),100-INJURY_ZONE);
+      const inj1Map=rankInjuryPositions(hItems.filter(it=>!isHalf2(it)&&(it.minute||0)===PD&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
+      const inj2Map=rankInjuryPositions(hItems.filter(it=>isHalf2(it)&&(it.minute||0)===PD*2&&(it.addedMinute||0)>0),100-INJURY_ZONE);
       // Real icon SVGs are now defined once, shared at module scope (TL_ICON_SVG/
       // TL_ICON_COLOR/tlIconHtml, near the top of this file) — used by both this
       // Demo-mode horizontal bar AND renderReal's real-component port.
@@ -655,10 +667,11 @@
         // row/dot renders on the SCORING PLAYER's own team side; only the score digit that
         // gets bolded is flipped to the benefiting team (see isHome comment below).
         const top=it.team==='home';
+        const inHalf2=isHalf2(it);
         let dp, timeKey;
-        if(min===PD&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
-        else if(min===PD*2&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
-        else if(min<=PD){dp=(Math.min(min,PD)/PD)*normalW1;timeKey='n-'+min;}
+        if(!inHalf2&&min===PD&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
+        else if(inHalf2&&min===PD*2&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
+        else if(!inHalf2){dp=(Math.min(min,PD)/PD)*normalW1;timeKey='n-'+min;}
         else{dp=Math.max(50+(Math.min(min-PD,PD)/PD)*normalW2,minHalf2StartPct);timeKey='n-'+min;}
         return {it,dp,top,groupKey:timeKey+'|'+(top?'top':'bottom')};
       });
@@ -831,7 +844,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.51';
+  const TL_TOOL_VERSION = 'v0.1.52';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1234,7 +1247,19 @@
   // Own Goal / Penalty Scored) auto-compute their resulting score instead of
   // requiring manual entry. Own goals credit the OPPOSITE side of the scoring
   // player's own team (matches real football scoring rules).
-  function sortKey(it) { return (it.minute || 0) + (it.addedMinute || 0) / 100; }
+  // Half Time / Full Time close out their half and must sort AFTER every other incident
+  // that occurred during that half's stoppage time (addedMinute>0) — otherwise a goal/
+  // card/corner at e.g. "45+2'" (minute=45, addedMinute=2, sortKey 45.02) would sort
+  // AFTER "Half time" (minute=45, addedMinute=0, sortKey 45.00) even though it actually
+  // happened BEFORE the referee blew the whistle to end the half (reported bug: a 45+2'
+  // goal displayed as if it happened after Half Time). +0.5 safely clears any realistic
+  // addedMinute (stoppage time practically never exceeds ~15') while staying under the
+  // next whole minute.
+  function sortKey(it) {
+    const base = (it.minute || 0) + (it.addedMinute || 0) / 100;
+    const closesHalf = it.type === 'halfTime' || it.type === 'secondHalfStart' || it.type === 'fullTime';
+    return base + (closesHalf ? 0.5 : 0);
+  }
   function scoringSideOf(incident) {
     return incident.type === 'ownGoal' ? (incident.team === 'home' ? 'away' : 'home') : incident.team;
   }
