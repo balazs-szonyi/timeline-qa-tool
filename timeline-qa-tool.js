@@ -82,6 +82,234 @@
     document.head.appendChild(s);
   }
 
+  // ── Real component CSS (ported 1:1 from the shipped, merged vertical-timeline
+  // feature — libs/betting/match-timeline/src/vertical-timeline/** in sb-b2b-fe-app) ──
+  // Used only in "Data only" mode (see renderReal below). We ship our own copy of
+  // this CSS instead of relying on the real lazy chunk having actually rendered once
+  // on this page (its <style> is only injected by Angular the first time a real
+  // instance mounts, which never happens here since we don't load the real chunk),
+  // so the class names below need SOMETHING to style them — this is that something,
+  // translated 1:1 from the real .scss (SCSS mixins like flex-center()/flex-column()
+  // expanded to their plain-CSS equivalent; var(--genos-*) tokens kept as-is since
+  // those are global design-system custom properties already defined by the site's
+  // base theme on every page, real or mock).
+  window._tqInjectRealStyles = function() {
+    if (document.getElementById('tl-real-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'tl-real-styles';
+    s.textContent = `
+      .obg-vertical-timeline-container{padding:16px 0;position:relative}
+      .obg-vertical-timeline-wrapper{position:relative;padding:0 16px}
+      .obg-vertical-timeline-center-line{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--genos-color-neutral-3,#e2e3e8);transform:translateX(-50%)}
+      .obg-vertical-timeline-item{display:flex;position:relative;margin-bottom:28px;min-height:24px}
+      .obg-vertical-timeline-left{flex-direction:row;justify-content:flex-end;padding-right:52%}
+      .obg-vertical-timeline-right{flex-direction:row-reverse;justify-content:flex-end;padding-left:52%}
+      .obg-vertical-timeline-full{justify-content:center;padding:0 8%}
+      .obg-vertical-timeline-content{flex:1;min-width:0;margin:0 12px}
+      .obg-vertical-timeline-marker{position:absolute;left:50%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:2}
+      .obg-vertical-timeline-marker-time{background:var(--genos-color-neutral-1,#f7f7f9);color:var(--genos-color-brand-primary,#ff6600);font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;font-family:'DM Sans',sans-serif}
+
+      .obg-football-incident-item-wrapper{display:flex;align-items:flex-start;gap:12px}
+      .obg-football-incident-item-wrapper.d-left{flex-direction:row-reverse}
+      .obg-football-incident-item-wrapper.d-left .obg-football-incident-item-details{align-items:flex-end;text-align:right}
+      .obg-football-incident-item-wrapper.d-full{width:100%;justify-content:center}
+      .obg-football-incident-item-wrapper.d-full .obg-football-incident-item-details{width:100%;align-items:center;text-align:center}
+      .obg-football-incident-item-icon{height:24px;width:24px;flex-shrink:0;border:1px solid var(--genos-color-neutral-3,#e2e3e8);border-radius:12px;background:var(--genos-color-neutral-2,#eeeff2);display:flex;align-items:center;justify-content:center;font-size:13px}
+      .obg-football-incident-item-details{display:flex;flex-direction:column;gap:4px;min-width:0;font-family:'DM Sans',sans-serif}
+      .obg-football-incident-item-details-title{font-size:14px;font-weight:600;color:var(--genos-text-color-hi,#040406)}
+
+      .obg-football-timeline-incident-goal-player,.obg-football-timeline-incident-card-player,.obg-football-timeline-incident-penalty-player{font-size:12px;color:var(--genos-text-color-hi,#040406)}
+      .obg-football-timeline-incident-goal-assist{font-size:10px;color:rgba(4,4,6,.7)}
+
+      .obg-football-timeline-incident-scoreboard-wrapper{display:inline-flex;align-items:center;gap:4px;background:var(--genos-color-neutral-2,#eeeff2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;color:#040406}
+      .obg-football-timeline-incident-scoreboard-wrapper .bold{font-weight:800}
+
+      .obg-football-timeline-incident-substitute-wrapper{display:flex;flex-direction:column;row-gap:4px}
+      .obg-football-timeline-incident-substitute-item{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:rgba(4,4,6,.7);background:var(--genos-color-neutral-2,#eeeff2);border-radius:6px;padding:3px 8px;width:fit-content}
+      .obg-football-timeline-incident-substitute-item-icon.out{color:var(--genos-color-negative,#dd2727)}
+      .obg-football-timeline-incident-substitute-item-icon.in{color:var(--genos-color-positive,#61aa00)}
+
+      .obg-football-timeline-incident-message-title,.obg-football-timeline-incident-notify-text{font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
+      .obg-football-timeline-incident-notify-suffix{font-size:11px;color:var(--genos-color-negative,#dd2727);margin-left:4px}
+      .obg-football-timeline-incident-message-teams{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;width:100%}
+      .obg-football-timeline-incident-message-teams-team{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
+      .obg-football-timeline-incident-message-teams-scoreboard{flex-shrink:0;padding:0 10px;font-size:13px;font-weight:800;color:rgba(4,4,6,.87)}
+
+      .obg-football-timeline-incident-review-full{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
+      .obg-football-timeline-incident-review-reason{font-size:11px;color:rgba(4,4,6,.7)}
+
+      #tl-panel.tl-theme-dark .obg-vertical-timeline-center-line{background:#353743}
+      #tl-panel.tl-theme-dark .obg-football-incident-item-icon{background:#181A22;border-color:#33353f}
+      #tl-panel.tl-theme-dark .obg-football-incident-item-details-title{color:#f5f5f7}
+      #tl-panel.tl-theme-dark .obg-vertical-timeline-marker-time{background:#181A22}
+      #tl-panel.tl-theme-dark .obg-football-timeline-incident-scoreboard-wrapper,#tl-panel.tl-theme-dark .obg-football-timeline-incident-substitute-item{background:#353743;color:#f5f5f7}
+    `;
+    document.head.appendChild(s);
+  };
+
+  // ── tlRender: real ported markup (used by "Data only" mode) ─────────────
+  // Faithful 1:1 port of the ACTUAL shipped Angular vertical-timeline component tree
+  // (VerticalTimelineComponent + the 7 real football-incidents/* sub-components: card,
+  // goal, message, notification, penalty, review, substitute — all merged & deployed,
+  // see libs/betting/match-timeline/src/vertical-timeline/**). Unlike renderMock (our
+  // own invented Figma-based preview used by "Demo" mode), this function reproduces the
+  // real DOM structure/class names/emoji-icon choices exactly, so it stays true to what
+  // developers actually built. Known gaps vs. the real product (called out, not hidden):
+  //  - No dedicated real component exists yet for "corner" incidents — we fall back to
+  //    the generic notification markup with a 🚩 icon as a clearly-approximate stand-in.
+  //  - "2nd yellow card" reuses the real generic card component (it takes `icon` as a
+  //    plain input, no dedicated component exists for this variant either).
+  //  - The real design has NO horizontal timeline shipped yet (still an open, unmerged
+  //    PR #20504) — this renders vertical-only, matching what's actually live today.
+  function renderReal(p) {
+    const items = (window._tlIncidents||[]).filter(i=>i.status!=='cancelled');
+    const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+    const home = window._tlHomeTeam||'Home', away = window._tlAwayTeam||'Away';
+    const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // The real product derives each goal's own team-tally scoreboard (a single running
+    // per-team count, e.g. "0 - 1", NOT the combined match score) purely from goal/
+    // ownGoal/penaltyScored incidents processed in chronological order — see the real
+    // MOCK_FOOTBALL_TIMELINE_DATA sample (goal.oldScore/newScore are single `goal` counts).
+    // We replicate that derivation here rather than trusting the manually-typed "score"
+    // text field, so the real-render path is internally self-consistent by construction.
+    const chronological = [...items].sort((a,b)=>(a.minute||0)-(b.minute||0)||(a.addedMinute||0)-(b.addedMinute||0));
+    let runHome=0, runAway=0;
+    const goalScoreById = new Map();
+    const runningAt = []; // {minute, home, away} snapshots after each goal, for half/full-time banners
+    for (const it of chronological) {
+      if (it.type==='goal'||it.type==='ownGoal'||it.type==='penaltyScored') {
+        const isHome = it.team==='home';
+        const scoringSide = it.type==='ownGoal' ? (isHome?'away':'home') : (isHome?'home':'away');
+        if (scoringSide==='home') { goalScoreById.set(it,{old:runHome,neu:++runHome}); }
+        else { goalScoreById.set(it,{old:runAway,neu:++runAway}); }
+        runningAt.push({minute: it.minute||0, home: runHome, away: runAway});
+      }
+    }
+    function combinedScoreAsOf(minuteLimit, useLatest) {
+      if (useLatest) return runningAt.length ? runningAt[runningAt.length-1] : {home:0,away:0};
+      let last = {home:0,away:0};
+      for (const snap of runningAt) { if (snap.minute<=minuteLimit) last=snap; else break; }
+      return last;
+    }
+
+    function scoreboardHtml(oldNeu) {
+      if (!oldNeu) return '';
+      return `<div class="obg-football-timeline-incident-scoreboard-wrapper"><span>${oldNeu.old}</span><span> - </span><span class="bold">${oldNeu.neu}</span></div>`;
+    }
+    function itemWrapper(direction, title, icon, bodyHtml) {
+      const isFull = direction==='full';
+      return `<div class="obg-football-incident-item-wrapper d-${direction}">`
+        + (!isFull ? `<div class="obg-football-incident-item-icon">${icon||''}</div>` : '')
+        + `<div class="obg-football-incident-item-details">`
+        + (title && !isFull ? `<div class="obg-football-incident-item-details-title">${esc(title)}</div>` : '')
+        + bodyHtml
+        + `</div></div>`;
+    }
+    function host(typeClass, direction, title, icon, bodyHtml) {
+      return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}"><div class="obg-football-incident-item">${itemWrapper(direction, title, icon, bodyHtml)}</div></div>`;
+    }
+
+    // Real component lists newest-first (see MOCK_FOOTBALL_TIMELINE_DATA ordering).
+    let rows = '';
+    for (const item of chronological.slice().reverse()) {
+      const isHome = item.team==='home';
+      const direction = PHASES.includes(item.type) || ((item.type==='varReviewStart'||item.type==='varReviewEnd') && !item.team)
+        ? 'full' : (isHome ? 'left' : 'right');
+      let markerTime = '';
+      if (direction!=='full') {
+        const m=`${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}`;
+        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${m}'</div></div>`;
+      }
+      let incidentHtml = '';
+      switch (item.type) {
+        case 'goal': case 'ownGoal': {
+          const sc = goalScoreById.get(item);
+          const bodyHtml = scoreboardHtml(sc)
+            + (item.player?`<div class="obg-football-timeline-incident-goal-player">${esc(item.player)}</div>`:'')
+            + (item.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(item.assist)})</div>`:'');
+          incidentHtml = host('goal', direction, item.type==='ownGoal'?'Own Goal':'Goal', '⚽', bodyHtml);
+          break;
+        }
+        case 'yellowCard': case 'secondYellow': case 'redCard': {
+          const icon = item.type==='redCard'?'🟥':(item.type==='secondYellow'?'🟨🟨':'🟨');
+          const title = item.type==='redCard'?'Red Card':(item.type==='secondYellow'?'2nd Yellow Card':'Yellow Card');
+          const bodyHtml = item.player?`<div class="obg-football-timeline-incident-card-player">${esc(item.player)}</div>`:'';
+          incidentHtml = host('card', direction, title, icon, bodyHtml);
+          break;
+        }
+        case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
+          const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
+          const title = item.type==='penaltyScored'?'Penalty Scored':(item.type==='penaltyMissed'?'Penalty Missed':'Penalty');
+          const bodyHtml = scoreboardHtml(sc) + (item.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(item.player)}</div>`:'');
+          incidentHtml = host('penalty', direction, title, '🥅', bodyHtml);
+          break;
+        }
+        case 'substitution': {
+          const bodyHtml = `<div class="obg-football-timeline-incident-substitute-wrapper">`
+            + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↑</span> ${esc(item.playerIn||'—')}</div>`
+            + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↓</span> ${esc(item.playerOut||'—')}</div>`
+            + `</div>`;
+          incidentHtml = host('substitute', direction, 'Substitution', '↑↓', bodyHtml);
+          break;
+        }
+        case 'corner': {
+          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">Corner</span></div>`;
+          incidentHtml = host('notify', direction, null, '🚩', bodyHtml);
+          break;
+        }
+        case 'varReviewStart': case 'varReviewEnd': {
+          const label = item.type==='varReviewStart'?'VAR review starts':'VAR review ends';
+          let bodyHtml;
+          if (direction==='full') {
+            const m=`${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}`;
+            bodyHtml = `<div class="obg-football-timeline-incident-review-full">${esc(label)} - ${m}'</div>`;
+          } else {
+            bodyHtml = item.reason?`<div class="obg-football-timeline-incident-review-reason">${esc(item.reason)}</div>`:'';
+          }
+          incidentHtml = host('review', direction, direction==='full'?null:label, '🔲', bodyHtml);
+          break;
+        }
+        case 'kickOff': case 'secondHalfStart': {
+          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${item.type==='kickOff'?'Kick Off':'Start of 2nd Half'}</span></div>`;
+          incidentHtml = host('notify', 'full', null, '', bodyHtml);
+          break;
+        }
+        case 'injuryTime': {
+          // Per the confirmed real MOCK_FOOTBALL_TIMELINE_DATA convention (see docblock
+          // above): plain hyphen-joined single line, e.g. "Injury Time - 3 min added".
+          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">Injury Time - ${item.extraMinutes||'?'} min added</span></div>`;
+          incidentHtml = host('notify', 'full', null, '', bodyHtml);
+          break;
+        }
+        case 'halfTime': case 'fullTime': {
+          const sc = item.type==='halfTime' ? combinedScoreAsOf(item.minute||0,false) : combinedScoreAsOf(null,true);
+          // NOTE: this "away score first, home score second" order looks backwards next
+          // to the visual layout (home name on the left, away name on the right) but is
+          // NOT a bug — it's a faithful 1:1 port of the real message.component.html
+          // template, which literally binds {{ teamAway.score }} - {{ teamHome.score }}
+          // in the middle scoreboard slot despite listing teamHome's name first. Do not
+          // "fix" this without re-checking the real source first.
+          const bodyHtml = `<div class="obg-football-timeline-incident-message-wrapper">`
+            + `<span class="obg-football-timeline-incident-message-title">${item.type==='halfTime'?'Half Time':'Full Time'}</span>`
+            + `<div class="obg-football-timeline-incident-message-teams">`
+            + `<div class="obg-football-timeline-incident-message-teams-team">${esc(home)}</div>`
+            + `<div class="obg-football-timeline-incident-message-teams-scoreboard">${sc.away} - ${sc.home}</div>`
+            + `<div class="obg-football-timeline-incident-message-teams-team">${esc(away)}</div>`
+            + `</div></div>`;
+          incidentHtml = host('message', 'full', null, '', bodyHtml);
+          break;
+        }
+        default: incidentHtml = '';
+      }
+      if (!incidentHtml) continue;
+      rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
+    }
+    if (!rows) rows = '<div style="text-align:center;color:#999;padding:24px;font-size:13px;font-family:\'DM Sans\',sans-serif">No incidents yet</div>';
+    p.innerHTML = `<div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div>`
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline). Horizontal timeline & real backend data wiring are not yet shipped upstream — this view is vertical-only and driven entirely by manually injected test incidents.</div>`;
+  }
+
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
   // Guard: never clobber a pre-existing `window.tlRender` that isn't our own — if some
   // other script (e.g. a future real integration hook) already defined it, back off instead
@@ -94,6 +322,11 @@
       const p = document.getElementById('tl-panel');
       if (!p) return;
       p.classList.toggle('tl-theme-dark', window._tlIsDarkTheme());
+      // "Data only" mode now renders the REAL ported vertical-timeline component markup
+      // (see renderReal above) instead of our own invented mock UI — only "Demo" mode
+      // (below) keeps the tool's own Figma-based mock rendering, used purely as a visual
+      // reference/comparison, clearly distinct from what real developer code produces.
+      if (window._tqMode !== 'demo') { renderReal(p); return; }
       // Per SBOF-9514/SBOF-9513 (backend Statistics Engine + provider-integration contracts):
       // a VAR-overturned incident (goal/card/corner/penalty/sub) arrives as a Cancel* event
       // that flips the original stat's Status to Cancelled by matching Reference/RelatedReference.
@@ -321,14 +554,20 @@
   }
 })();/**
  * Timeline QA Tool v2 — Injectable bookmarklet (mode toggle edition)
- * Two modes (both are our OWN mock renderer — see IMPORTANT note below):
- *  - Data only: same mock tab/panel as Demo, but skips our demo CSS injection
- *  - Demo:      full mock tab+panel+CSS injection — shows how Timeline should look
+ * Two modes:
+ *  - Data only: renders using our PORTED real vertical-timeline component markup/CSS
+ *    (1:1 from the merged, shipped libs/betting/match-timeline/src/vertical-timeline
+ *    code — see renderReal()/`_tqInjectRealStyles` above) — real class names, real emoji
+ *    icons, real per-type component structure. Not the invented Figma mock below.
+ *  - Demo:      our OWN invented mock tab+panel+CSS (horizontal bar + styled list) —
+ *    a Figma-based visual preview only, useful for comparison, NOT real developer code.
  *
- * IMPORTANT — this tool is NOT wired to the real deployed Timeline feature:
- * the real Angular component is `sbb2b-match-timeline-container`
+ * IMPORTANT — even "Data only" mode is NOT wired to the real deployed Timeline feature's
+ * DATA pipeline: the real Angular component is `sbb2b-match-timeline-container`
  * (libs/betting/match-timeline/src/match-timeline/match-timeline.container.ts),
  * currently still using MOCK_FOOTBALL_TIMELINE_DATA (real store wiring not yet built).
+ * "Data only" mode ports the real component's HTML/CSS/data-model 1:1, but is still
+ * driven entirely by manually injected test incidents (window._tlIncidents), same as Demo.
  *
  * CONFIRMED real domain contract (SBEUJE-6121, merged PR #20266, "SDK ticket, no
  * UI-reflected changes" — nothing to click-test in browser for that ticket):
@@ -380,7 +619,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.41';
+  const TL_TOOL_VERSION = 'v0.1.42';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -928,8 +1167,8 @@
     $('tl-mode-data').classList.toggle('active', !isDemo);
     $('tl-mode-demo').classList.toggle('active', isDemo);
     $('tl-qa-mode-desc').textContent = isDemo
-      ? 'Full mock tab+CSS injected — shows how Timeline should look'
-      : 'Mock tab, unstyled — NOT wired to real deployed code (pre-release only)';
+      ? 'Full mock tab+CSS injected — shows how Timeline should look (our own Figma-based preview)'
+      : 'Real ported vertical-timeline component (1:1 from the merged libs/betting/match-timeline code) — vertical only, no real backend data wiring exists yet upstream';
     $('tl-inject-btn').textContent = window._tlInjected
       ? (isDemo ? '✓ Demo injected' : '✓ Data ready')
       : (isDemo ? 'Inject Demo Tab' : 'Inject Data Mode');
@@ -1505,6 +1744,7 @@
     window._tlInjected  = true;
 
     if (isDemo) window._tqInjectDemoStyles();
+    else window._tqInjectRealStyles();
     window._tqInstallTlRender();
 
 
