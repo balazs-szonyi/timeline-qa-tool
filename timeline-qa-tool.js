@@ -831,7 +831,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.49';
+  const TL_TOOL_VERSION = 'v0.1.50';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1094,6 +1094,17 @@
           <div class="tl-qa-row" id="tl-row-base">
             <input class="tl-qa-input" type="number" id="tl-min" placeholder="Min" value="45" min="1" max="120">
             <input class="tl-qa-input" type="text" id="tl-player" placeholder="Player name">
+            <!-- Injury Time only: per the real Opta feed, the "InjuryTimeAnnouncement"
+                 event is always emitted right at a half's natural end (e.g. ~89:30 in
+                 2nd half) — it is never a freely-chosen arbitrary minute. Only the
+                 announced added-minutes qualifier is variable. So instead of letting
+                 the user type any minute (which could drift out of sync with the +min
+                 value, as reported), we lock the minute to the half boundary and only
+                 let the added-minutes count be edited (see tl-row-phase's tl-extra). -->
+            <select class="tl-qa-input" id="tl-injury-half" style="display:none">
+              <option value="1">End of 1st Half</option>
+              <option value="2">End of 2nd Half</option>
+            </select>
           </div>
 
           <div class="tl-qa-row" id="tl-row-goal">
@@ -1452,6 +1463,7 @@
     const isPhase = PHASES.includes(t);
     const isSub   = t === 'substitution';
     const isScore = GOAL_TYPES.includes(t);
+    const isInjuryTime = t === 'injuryTime';
     $('tl-row-base').style.display  = 'flex';
     // Player name is irrelevant for substitutions (Player out/in are used instead) and
     // for phase bands (no scorer/carded player involved) — everything else shows it.
@@ -1461,10 +1473,24 @@
     $('tl-row-phase').style.display = isPhase ? 'flex' : 'none';
     $('tl-team').style.display      = (t === 'kickOff') ? 'none' : '';
     $('tl-score').disabled = isScore;
-    if (isPhase) $('tl-min').value = phaseDefaultMinute(t);
+    // Injury Time: the real Opta feed's InjuryTimeAnnouncement event always fires at
+    // a half's natural end, never at an arbitrary minute — so we replace the free
+    // minute input with a locked half-selector and let updateInjuryHalfMinute() keep
+    // tl-min in sync, removing the possibility of an inconsistent minute/added-minutes
+    // combination like the one reported (e.g. minute=48 with "2 min added" shown at 45').
+    $('tl-min').style.display          = isInjuryTime ? 'none' : '';
+    $('tl-injury-half').style.display  = isInjuryTime ? '' : 'none';
+    if (isInjuryTime) updateInjuryHalfMinute();
+    else if (isPhase) $('tl-min').value = phaseDefaultMinute(t);
     if (isScore) updateScorePreview();
     updatePlayerNames();
   }
+  function updateInjuryHalfMinute() {
+    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+    const half = $('tl-injury-half').value || '1';
+    $('tl-min').value = half === '2' ? PD * 2 : PD;
+  }
+  $('tl-injury-half').addEventListener('change', updateInjuryHalfMinute);
   $('tl-type').addEventListener('change', updateRows);
   $('tl-team').addEventListener('change', () => { updateScorePreview(); updatePlayerNames(); });
   $('tl-min').addEventListener('input', updateScorePreview);
@@ -2158,7 +2184,15 @@
     // phaseDefaultMinute() fix above) — previously phases were left with `minute`
     // undefined, which collapsed their chronological sortKey to 0 and broke both
     // ordering and the Half Time score-as-of lookup.
-    {
+    // Injury Time is derived exclusively from the locked half-selector (tl-injury-half),
+    // never from the (hidden) free minute input — per the real Opta feed, the
+    // InjuryTimeAnnouncement event always fires at a half's natural end, so letting the
+    // minute and the added-minutes count be set independently could previously produce
+    // an inconsistent pair (e.g. minute=48 shown alongside "Injury time – 2 min added").
+    if (type === 'injuryTime') {
+      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+      incident.minute = ($('tl-injury-half').value === '2') ? PD * 2 : PD;
+    } else {
       const parsedMin = parseInt($('tl-min').value, 10);
       incident.minute = Number.isNaN(parsedMin) ? (PHASES.includes(type) ? phaseDefaultMinute(type) : undefined) : parsedMin;
     }
