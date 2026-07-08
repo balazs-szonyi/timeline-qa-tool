@@ -8,6 +8,46 @@
     return document.body.classList.contains('dark');
   };
 
+  // ── Real incident icon SVGs (shared by BOTH renderReal and the Demo-mode
+  // horizontal bar) ───────────────────────────────────────────────────────
+  // Icon paths below are copied verbatim from the real Betsson production icon assets
+  // (b2bShared_sportsbook_timeline_*.svg / b2bShared_playerstatistics_*.svg, 16x16 viewBox),
+  // extracted from the Figma export zips — not hand-drawn approximations — so the QA tool
+  // renders pixel-identical shapes to the shipped product. Previously ONLY used by the
+  // Demo-mode horizontal bar; hoisted here (2026-07-08) so the real-component-port
+  // renderer (renderReal, "Data only" mode) can use the same real icons instead of emoji
+  // stand-ins — this was the graphical gap making Data-only look less "finished" than the
+  // dev-proof screenshots, which are the real component with its real (already-extracted)
+  // icon assets, not missing/unfound code.
+  const TL_GREY='#777a88', TL_RED='#dd2727', TL_ORANGE='#faa200', TL_GREEN='#61aa00';
+  const TL_ICON_SVG = {
+    // football.svg (grey ring) / football-1.svg (red ring) — white ball pattern is shared.
+    goal: c=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M5.56 2.70001C4.86 3.02668 4.23327 3.48001 3.72 4.04001L3.655 6.14501L5.46 6.73335L5.53333 6.68001L7.51333 5.24001L7.58667 5.19335V3.29075L5.56 2.70001ZM5.97993 9.94668L5.22667 7.62001L5.19333 7.53335L3.44147 6.95808L2.20667 8.68668C2.3 9.46668 2.54 10.2 2.90667 10.8533L4.9974 11.4287L6.01333 10.0333L5.97993 9.94668ZM10.4466 2.70001L8.41327 3.27721V5.19328L8.4866 5.23995L10.4733 6.67995L10.5466 6.73328L12.2866 6.16195V4.04001C11.7666 3.48001 11.1399 3.02668 10.4466 2.70001ZM12.5457 6.97061L10.8 7.52668L10.7733 7.61335L10.0133 9.94001L9.98667 10.0267L11.0251 11.453L13.0933 10.8467C13.46 10.1933 13.7067 9.46668 13.8 8.68668L12.5457 6.97061ZM9.31327 10.52H6.68667L5.64247 11.9541L6.86667 13.7267C7.23333 13.8 7.61333 13.8333 8 13.8333C8.39333 13.8333 8.77333 13.8 9.14 13.7267V13.72L10.3385 11.9279L9.31327 10.52Z"/><path fill="${c}" d="M9.12966 1.42639C4.56932 0.676388 0.676388 4.56932 1.42639 9.12966C1.88059 11.8917 4.10826 14.1193 6.87032 14.5736C11.4307 15.3236 15.3236 11.4307 14.5736 6.87032C14.1194 4.10832 11.8917 1.88066 9.12966 1.42639ZM8.41332 3.27719L10.4467 2.69999C11.14 3.02666 11.7667 3.47999 12.2867 4.03999V6.16192L10.5467 6.73326L10.4733 6.67992L8.48666 5.23992L8.41332 5.19325V3.27719ZM5.55999 2.69999L7.58666 3.29072V5.19332L7.51332 5.23999L5.53332 6.67999L5.45999 6.73332L3.65499 6.14499L3.71999 4.03999C4.23332 3.47999 4.85999 3.02666 5.55999 2.69999ZM4.99739 11.4287L2.90666 10.8533C2.53999 10.2 2.29999 9.46666 2.20665 8.68666L3.44146 6.95806L5.19332 7.53332L5.22666 7.61999L5.97992 9.94666L6.01326 10.0333L4.99739 11.4287ZM9.13999 13.72V13.7267C8.77332 13.8 8.39332 13.8333 7.99999 13.8333C7.61332 13.8333 7.23332 13.8 6.86666 13.7267L5.64246 11.9541L6.68666 10.52H9.31326L10.3384 11.9279L9.13999 13.72ZM11.0251 11.453L9.98666 10.0267L10.0133 9.93999L10.7733 7.61332L10.8 7.52666L12.5457 6.97059L13.8 8.68666C13.7067 9.46666 13.46 10.1933 13.0933 10.8467L11.0251 11.453Z"/></svg>`,
+    ownGoal: ()=>TL_ICON_SVG.goal(TL_RED),
+    // referee-card.svg (red) / referee-card-1.svg (orange) — identical card shape, different fill.
+    yellowCard: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.84696 1.49645L12.6425 3.04936C13.3538 3.23995 13.7759 3.97107 13.5853 4.68235L11.1697 13.6977C10.9791 14.409 10.248 14.8311 9.53669 14.6405L3.74114 13.0876C3.02985 12.897 2.60774 12.1659 2.79833 11.4546L5.21397 2.43926C5.40456 1.72797 6.13568 1.30586 6.84696 1.49645Z"/></svg>`,
+    redCard: ()=>TL_ICON_SVG.yellowCard(TL_RED),
+    // 2ndyellowcard.svg — card shape clipped, diagonal red/orange split.
+    secondYellow: ()=>`<svg viewBox="0 0 16 16"><path d="M2.84271 12.4889L13.333 3.64254C13.5074 3.93962 13.5673 4.30371 13.4712 4.66276L11.0555 13.6781C10.8649 14.3893 10.1338 14.8115 9.4225 14.6209L3.62694 13.0679C3.28839 12.9773 3.01535 12.7641 2.84271 12.4889Z" fill="${TL_ORANGE}"/><path d="M13.333 3.64254C13.1619 3.35109 12.8806 3.12415 12.5284 3.02977L6.73284 1.47685C6.02156 1.28627 5.29044 1.70837 5.09985 2.41966L2.68421 11.4349C2.58433 11.8077 2.65263 12.1859 2.84271 12.4889L13.333 3.64254Z" fill="${TL_RED}"/></svg>`,
+    // corners.svg — corner flag pennant.
+    corner: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.3916 2.18891L12.7495 5.25513L6.3916 8.32257V14.5245H5.33331V1.33337H6.3916V2.18891Z"/></svg>`,
+    // substitution.svg — solid up/down arrow shapes (not stroked lines).
+    substitution: ()=>`<svg viewBox="0 0 16 16"><path fill="${TL_GREEN}" d="M8.51159 5.35764C8.05606 5.35764 7.83339 4.78427 8.14719 4.4551L10.9713 1.49265C11.1737 1.28028 11.4875 1.28028 11.69 1.49265L14.5141 4.4551C14.838 4.78427 14.6153 5.35764 14.1598 5.35764H12.3479V9.60491C12.3479 10.1889 11.8924 10.6667 11.3357 10.6667C10.779 10.6667 10.3235 10.1889 10.3235 9.60491V5.35764H8.51159Z"/><path fill="${TL_RED}" d="M7.48772 10.6424C7.94325 10.6424 8.16592 11.2158 7.85212 11.545L5.02802 14.5074C4.82557 14.7198 4.51179 14.7198 4.30934 14.5074L1.48524 11.545C1.16132 11.2158 1.38402 10.6424 1.83952 10.6424H3.6514V6.3952C3.6514 5.81119 4.10689 5.33338 4.66362 5.33338C5.22034 5.33338 5.67585 5.81119 5.67585 6.3952V10.6424H7.48772Z"/></svg>`,
+    // penaltyscored.svg — camera glyph (lens) PLUS the same outer frame path as penaltyMissed,
+    // just colored to match (grey), so both variants share identical visual size/weight.
+    penaltyScored: c=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M6.77998 6.68357C6.42998 6.84691 6.11661 7.07357 5.85998 7.35357L5.82748 8.40607L6.72998 8.70024L7.75665 7.95357L7.79331 7.93024V6.97894L6.77998 6.68357ZM6.98995 10.3069L6.61331 9.14357L6.59665 9.10024L5.72071 8.8126L5.10332 9.6769C5.14998 10.0669 5.26998 10.4336 5.45331 10.7602L6.49868 11.0479L7.00665 10.3502L6.98995 10.3069ZM9.22328 6.68357L8.20661 6.97217V7.9302L8.24328 7.95354L9.23661 8.67354L9.27328 8.7002L10.1433 8.41454V7.35357C9.88328 7.07357 9.56994 6.84691 9.22328 6.68357ZM10.2728 8.81887L9.39998 9.0969L9.38664 9.14024L9.00664 10.3036L8.99331 10.3469L9.51254 11.0601L10.5466 10.7569C10.73 10.4302 10.8533 10.0669 10.9 9.6769L10.2728 8.81887ZM8.65661 10.5936H7.34331L6.82121 11.3106L7.43331 12.1969C7.61665 12.2336 7.80664 12.2502 7.99998 12.2502C8.19664 12.2502 8.38664 12.2336 8.56998 12.1969V12.1936L9.16921 11.2975L8.65661 10.5936Z"/><path fill="${c}" d="M8.56481 6.04652C6.28465 5.67152 4.33818 7.61798 4.71318 9.89815C4.94028 11.2791 6.05412 12.393 7.43515 12.6201C9.71534 12.9951 11.6618 11.0487 11.2868 8.76848C11.0597 7.38748 9.94584 6.27365 8.56481 6.04652ZM8.20661 6.97217L9.22328 6.68357C9.56994 6.84691 9.88328 7.07357 10.1433 7.35357V8.41454L9.27328 8.7002L9.23661 8.67354L8.24328 7.95354L8.20661 7.9302V6.97217ZM6.77998 6.68357L7.79331 6.97894V7.93024L7.75665 7.95357L6.72998 8.70024L5.82748 8.40607L5.85998 7.35357C6.11661 7.07357 6.42998 6.84691 6.77998 6.68357ZM6.49868 11.0479L5.45331 10.7602C5.26998 10.4336 5.14998 10.0669 5.10332 9.6769L5.72071 8.8126L6.59665 9.10024L6.61331 9.14357L6.98995 10.3069L7.00665 10.3502L6.49868 11.0479ZM8.56998 12.1936V12.1969C8.38664 12.2336 8.19664 12.2502 7.99998 12.2502C7.80664 12.2502 7.61665 12.2336 7.43331 12.1969L6.82121 11.3106L7.34331 10.5936H8.65661L9.16921 11.2975L8.56998 12.1936ZM9.51254 11.0601L8.99331 10.3469L9.00664 10.3036L9.38664 9.14024L9.39998 9.0969L10.2728 8.81887L10.9 9.6769C10.8533 10.0669 10.73 10.4302 10.5466 10.7569L9.51254 11.0601Z"/><path fill="${c}" d="M3.33331 4.66665C2.96458 4.66665 2.66665 4.96458 2.66665 5.33331V12C2.66665 12.3687 2.36871 12.6666 1.99998 12.6666C1.63125 12.6666 1.33331 12.3687 1.33331 12V5.33331C1.33331 4.22918 2.22918 3.33331 3.33331 3.33331H12.6666C13.7708 3.33331 14.6666 4.22918 14.6666 5.33331V12C14.6666 12.3687 14.3687 12.6666 14 12.6666C13.6312 12.6666 13.3333 12.3687 13.3333 12V5.33331C13.3333 4.96458 13.0354 4.66665 12.6666 4.66665H3.33331Z"/></svg>`,
+    // penaltymissed.svg — same camera glyph PLUS viewfinder corner-bracket frame, both red.
+    penaltyMissed: ()=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M6.77998 6.68357C6.42998 6.84691 6.11661 7.07357 5.85998 7.35357L5.82748 8.40607L6.72998 8.70024L7.75665 7.95357L7.79331 7.93024V6.97894L6.77998 6.68357ZM6.98995 10.3069L6.61331 9.14357L6.59665 9.10024L5.72071 8.8126L5.10332 9.6769C5.14998 10.0669 5.26998 10.4336 5.45331 10.7602L6.49868 11.0479L7.00665 10.3502L6.98995 10.3069ZM9.22328 6.68357L8.20661 6.97217V7.9302L8.24328 7.95354L9.23661 8.67354L9.27328 8.7002L10.1433 8.41454V7.35357C9.88328 7.07357 9.56994 6.84691 9.22328 6.68357ZM10.2728 8.81887L9.39998 9.0969L9.38664 9.14024L9.00664 10.3036L8.99331 10.3469L9.51254 11.0601L10.5466 10.7569C10.73 10.4302 10.8533 10.0669 10.9 9.6769L10.2728 8.81887ZM8.65661 10.5936H7.34331L6.82121 11.3106L7.43331 12.1969C7.61665 12.2336 7.80664 12.2502 7.99998 12.2502C8.19664 12.2502 8.38664 12.2336 8.56998 12.1969V12.1936L9.16921 11.2975L8.65661 10.5936Z"/><path fill="${TL_RED}" d="M8.56481 6.04652C6.28465 5.67152 4.33818 7.61798 4.71318 9.89815C4.94028 11.2791 6.05412 12.393 7.43515 12.6201C9.71534 12.9951 11.6618 11.0487 11.2868 8.76848C11.0597 7.38748 9.94584 6.27365 8.56481 6.04652ZM8.20661 6.97217L9.22328 6.68357C9.56994 6.84691 9.88328 7.07357 10.1433 7.35357V8.41454L9.27328 8.7002L9.23661 8.67354L8.24328 7.95354L8.20661 7.9302V6.97217ZM6.77998 6.68357L7.79331 6.97894V7.93024L7.75665 7.95357L6.72998 8.70024L5.82748 8.40607L5.85998 7.35357C6.11661 7.07357 6.42998 6.84691 6.77998 6.68357ZM6.49868 11.0479L5.45331 10.7602C5.26998 10.4336 5.14998 10.0669 5.10332 9.6769L5.72071 8.8126L6.59665 9.10024L6.61331 9.14357L6.98995 10.3069L7.00665 10.3502L6.49868 11.0479ZM8.56998 12.1936V12.1969C8.38664 12.2336 8.19664 12.2502 7.99998 12.2502C7.80664 12.2502 7.61665 12.2336 7.43331 12.1969L6.82121 11.3106L7.34331 10.5936H8.65661L9.16921 11.2975L8.56998 12.1936ZM9.51254 11.0601L8.99331 10.3469L9.00664 10.3036L9.38664 9.14024L9.39998 9.0969L10.2728 8.81887L10.9 9.6769C10.8533 10.0669 10.73 10.4302 10.5466 10.7569L9.51254 11.0601Z"/><path fill="${TL_RED}" d="M3.33331 4.66665C2.96458 4.66665 2.66665 4.96458 2.66665 5.33331V12C2.66665 12.3687 2.36871 12.6666 1.99998 12.6666C1.63125 12.6666 1.33331 12.3687 1.33331 12V5.33331C1.33331 4.22918 2.22918 3.33331 3.33331 3.33331H12.6666C13.7708 3.33331 14.6666 4.22918 14.6666 5.33331V12C14.6666 12.3687 14.3687 12.6666 14 12.6666C13.6312 12.6666 13.3333 12.3687 13.3333 12V5.33331C13.3333 4.96458 13.0354 4.66665 12.6666 4.66665H3.33331Z"/></svg>`,
+    // whistle.svg — referee whistle, reused for "Penalty" (awarded, undecided) and full-width Kick off band.
+    penaltyAwarded: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.18954 8.47146C6.42546 8.36596 6.69485 8.36075 6.93824 8.45714C7.18167 8.55356 7.37932 8.74384 7.48772 8.98579C7.59608 9.22782 7.60659 9.5023 7.51636 9.74816C7.42613 9.99398 7.24253 10.1913 7.0066 10.297C6.77059 10.4026 6.50077 10.4078 6.25725 10.3113C6.01389 10.2148 5.81609 10.0246 5.70777 9.78266C5.59952 9.54069 5.58959 9.26671 5.67978 9.02094C5.77003 8.77506 5.95353 8.57712 6.18954 8.47146Z"/><path fill="${c}" fill-rule="evenodd" clip-rule="evenodd" d="M4.96363 5.73383C5.82747 5.34713 6.8007 5.26947 7.726 5.51704L14.991 7.45258L14.0164 10.4454L10.448 10.1948C10.2199 11.4152 9.43183 12.4983 8.23251 13.0353C6.26734 13.9151 3.94085 12.9935 3.0385 10.978C2.8376 10.5292 2.72415 10.0619 2.69084 9.59972C2.14567 9.65436 1.59738 9.34986 1.35556 8.81C1.05508 8.13883 1.34248 7.35434 1.99683 7.06131C2.43066 6.86709 2.91581 6.93606 3.28264 7.19868C3.67483 6.57343 4.2443 6.05587 4.96363 5.73383ZM7.49358 6.47928C6.78372 6.29047 6.03545 6.3495 5.37183 6.64659C3.89814 7.30653 3.25175 9.06795 3.92847 10.5795C4.60524 12.0912 6.34978 12.7823 7.82366 12.1225C8.72282 11.72 9.3148 10.9094 9.48642 9.99034L9.64397 9.13943L13.3217 9.40115L13.7312 8.14269L10.2156 7.20519L10.1349 7.58149L10.0313 8.06651L9.07431 7.83735L9.17782 7.35297L9.26311 6.95193L7.49358 6.47928ZM2.83863 8.14594C2.76373 7.97863 2.56882 7.90107 2.40569 7.97407C2.24254 8.04711 2.17062 8.24424 2.24553 8.41157C2.32049 8.57863 2.51481 8.65559 2.67782 8.58279C2.70749 8.56951 2.73405 8.55319 2.7566 8.53396L2.7553 8.53201C2.78032 8.40899 2.8121 8.28546 2.84709 8.16482C2.84457 8.15918 2.84117 8.15163 2.83863 8.14594Z"/><path fill="${c}" d="M11.0704 2.67068C11.2439 2.50935 11.5083 2.49335 11.7006 2.63032L11.741 2.66157C11.9483 2.84386 11.9683 3.16003 11.7865 3.3673L10.6069 4.71235C10.4247 4.9196 10.1091 4.94007 9.90178 4.75857C9.69481 4.57692 9.67291 4.2608 9.85491 4.05284L11.0346 2.70779L11.0704 2.67068Z"/><path fill="${c}" d="M9.08147 1.93631C9.13541 1.66548 9.39876 1.49001 9.66936 1.54373L9.71884 1.5561C9.96118 1.6304 10.1125 1.87769 10.0619 2.13162L9.67196 4.09321C9.6214 4.34708 9.38646 4.51707 9.1342 4.49295L9.08342 4.48579C8.81299 4.43169 8.63697 4.16867 8.69084 3.8979L9.08147 1.93631Z"/><path fill="${c}" d="M7.40634 1.76248C7.65608 1.72086 7.90231 1.87448 7.97079 2.12381L8.44215 3.84972C8.51481 4.11531 8.35946 4.39028 8.09319 4.46365C7.82691 4.53644 7.55086 4.37965 7.47795 4.11339L7.00595 2.38878C6.93336 2.12352 7.08897 1.84745 7.35621 1.7742L7.40634 1.76248Z"/></svg>`,
+    varReviewStart: c=>`<svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7.5" rx="1" fill="none" stroke="${c}" stroke-width="1.3"/><line x1="6" y1="13" x2="10" y2="13" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="10.5" x2="8" y2="13" stroke="${c}" stroke-width="1.3"/></svg>`,
+    varReviewEnd: c=>TL_ICON_SVG.varReviewStart(c),
+    injuryTime: c=>`<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="${c}" stroke-width="1.3"/><path d="M8 4.8V8l2.3 1.4" stroke="${c}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+    kickOff: c=>TL_ICON_SVG.penaltyAwarded(c),
+  };
+  const TL_ICON_COLOR = {goal:TL_GREY,ownGoal:TL_RED,yellowCard:TL_ORANGE,secondYellow:null,redCard:TL_RED,corner:TL_RED,substitution:null,penaltyScored:TL_GREY,penaltyMissed:null,penaltyAwarded:TL_GREY,varReviewStart:TL_GREY,varReviewEnd:TL_GREY,injuryTime:TL_RED,kickOff:TL_GREY};
+  const tlIconHtml = t => TL_ICON_SVG[t] ? TL_ICON_SVG[t](TL_ICON_COLOR[t]) : '';
+
   // ── Demo CSS ───────────────────────────────────────────────────────────
   window._tqInjectDemoStyles = function() {
     if (document.getElementById('tl-styles')) return;
@@ -115,6 +155,7 @@
       .obg-football-incident-item-wrapper.d-full{width:100%;justify-content:center}
       .obg-football-incident-item-wrapper.d-full .obg-football-incident-item-details{width:100%;align-items:center;text-align:center}
       .obg-football-incident-item-icon{height:24px;width:24px;flex-shrink:0;border:1px solid var(--genos-color-neutral-3,#e2e3e8);border-radius:12px;background:var(--genos-color-neutral-2,#eeeff2);display:flex;align-items:center;justify-content:center;font-size:13px}
+      .obg-football-incident-item-icon svg{width:16px;height:16px;display:block}
       .obg-football-incident-item-details{display:flex;flex-direction:column;gap:4px;min-width:0;font-family:'DM Sans',sans-serif}
       .obg-football-incident-item-details-title{font-size:14px;font-weight:600;color:var(--genos-text-color-hi,#040406)}
 
@@ -172,6 +213,7 @@
       .obg-timeline-stack-items.d-up .obg-timeline-stack-item:not(:last-child){margin-top:-12px}
       .obg-timeline-stack-items.d-down .obg-timeline-stack-item:not(:first-child){margin-top:-12px}
       .obg-timeline-stack-item{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;background:var(--genos-color-neutral-1,#f7f7f9);border-radius:50%;border:1px solid var(--genos-color-neutral-3,#e2e3e8);position:relative}
+      .obg-timeline-stack-item svg{width:14px;height:14px;display:block}
       .obg-progress-bar{display:flex;align-items:center;gap:12px;width:100%}
       .obg-progress-bar-line{flex:1;height:4px;border-radius:4px;background:var(--genos-color-neutral-4,#c4c6cc)}
       .obg-progress-bar-filled{height:4px;border-radius:4px;background:var(--genos-custom-card-event-status,var(--genos-color-brand-secondary,#61aa00))}
@@ -201,7 +243,7 @@
   // between them once the 2nd half has started, matching the real container's
   // `showHorizontalTimeline` + `horizontalTimelineSections` composition.
   function horizontalTimelineHtml(chronological, PD) {
-    const HDOT_TYPES = { goal:'⚽', ownGoal:'⚽', yellowCard:'🟨', secondYellow:'🟨🟨', redCard:'🟥' };
+    const HDOT_TYPES = { goal:1, ownGoal:1, yellowCard:1, secondYellow:1, redCard:1 };
     const hItems = chronological.filter(it => HDOT_TYPES[it.type] && (it.addedMinute||0) === 0);
     const allMins = hItems.map(it=>it.minute||0);
     const kickedOff = chronological.some(it=>it.type==='kickOff');
@@ -222,7 +264,7 @@
       return [...byKey.values()];
     }
     function stackHtml(group) {
-      const iconsHtml = group.incidents.map(it => `<div class="obg-timeline-stack-item">${HDOT_TYPES[it.type]||''}</div>`).join('');
+      const iconsHtml = group.incidents.map(it => `<div class="obg-timeline-stack-item">${tlIconHtml(it.type)}</div>`).join('');
       return `<div class="obg-timeline-stack-items d-${group.direction}">${iconsHtml}</div>`;
     }
     function progressSection(minute, totalMinutes, groups) {
@@ -260,10 +302,12 @@
   // goal, message, notification, penalty, review, substitute — all merged & deployed,
   // see libs/betting/match-timeline/src/vertical-timeline/**). Unlike renderMock (our
   // own invented Figma-based preview used by "Demo" mode), this function reproduces the
-  // real DOM structure/class names/emoji-icon choices exactly, so it stays true to what
+  // real DOM structure/class names AND real icon glyphs (TL_ICON_SVG, shared with the
+  // Demo-mode horizontal bar — see top of file) exactly, so it stays true to what
   // developers actually built. Known gaps vs. the real product (called out, not hidden):
   //  - No dedicated real component exists yet for "corner" incidents — we fall back to
-  //    the generic notification markup with a 🚩 icon as a clearly-approximate stand-in.
+  //    the generic notification markup with the real corner-flag icon as a clearly-
+  //    approximate stand-in (right component, generic wrapper).
   //  - "2nd yellow card" reuses the real generic card component (it takes `icon` as a
   //    plain input, no dedicated component exists for this variant either).
   //  - Horizontal timeline (PR #20504, SBEUJE-6553) is ALSO ported now (see
@@ -271,9 +315,14 @@
   //    not merged to main — same rationale as the filter bar: real developer code exists,
   //    so we show it, clearly labelled as sourced from an in-review PR in the disclaimer.
   //    Per SBEUJE-6150 AC it only ever shows goal/card markers (no corners/subs/VAR/pens).
-  //  - Real icons (`ico-goal` etc.) load from the site's own NgRx icon store at runtime;
-  //    no bundled SVG/icon-library PR was found for CPD-4353/SBEUJE-6152, so both the
-  //    vertical AND horizontal ports keep using emoji stand-ins for icons.
+  //  - Icons: real icons (`ico-goal` etc.) load from the site's own NgRx icon store at
+  //    runtime via ImageIconDirective — no bundled SVG/icon-library PR was found for
+  //    CPD-4353/SBEUJE-6152. However, we DO have real, pixel-identical icon SVGs already
+  //    extracted from the Figma export zips (TL_ICON_SVG, top of file) — these were
+  //    previously only wired into the Demo-mode horizontal bar, NOT this real-component
+  //    port, which is exactly why Data-only mode looked visually less "finished" than the
+  //    real dev-proof screenshots even though the DOM/CSS was already faithfully ported.
+  //    Fixed 2026-07-08: renderReal and horizontalTimelineHtml now both use TL_ICON_SVG.
   function renderReal(p) {
     const items = (window._tlIncidents||[]).filter(i=>i.status!=='cancelled');
     const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
@@ -383,11 +432,11 @@
           const bodyHtml = scoreboardHtml(sc)
             + (item.player?`<div class="obg-football-timeline-incident-goal-player">${esc(item.player)}</div>`:'')
             + (item.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(item.assist)})</div>`:'');
-          incidentHtml = host('goal', direction, item.type==='ownGoal'?'Own Goal':'Goal', '⚽', bodyHtml);
+          incidentHtml = host('goal', direction, item.type==='ownGoal'?'Own Goal':'Goal', tlIconHtml(item.type), bodyHtml);
           break;
         }
         case 'yellowCard': case 'secondYellow': case 'redCard': {
-          const icon = item.type==='redCard'?'🟥':(item.type==='secondYellow'?'🟨🟨':'🟨');
+          const icon = tlIconHtml(item.type);
           const title = item.type==='redCard'?'Red Card':(item.type==='secondYellow'?'2nd Yellow Card':'Yellow Card');
           const bodyHtml = item.player?`<div class="obg-football-timeline-incident-card-player">${esc(item.player)}</div>`:'';
           incidentHtml = host('card', direction, title, icon, bodyHtml);
@@ -396,10 +445,7 @@
         case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
           const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
           const title = item.type==='penaltyScored'?'Penalty Scored':(item.type==='penaltyMissed'?'Penalty Missed':'Penalty');
-          // Per the real mock data: the "Penalty" (undecided/awarded) variant uses a
-          // megaphone 📢 icon, distinct from the camera-goal 🥅 icon used once the
-          // outcome (scored/missed) is known.
-          const icon = item.type==='penaltyAwarded' ? '📢' : '🥅';
+          const icon = tlIconHtml(item.type);
           const bodyHtml = scoreboardHtml(sc) + (item.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(item.player)}</div>`:'');
           incidentHtml = host('penalty', direction, title, icon, bodyHtml);
           break;
@@ -409,12 +455,12 @@
             + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↑</span> ${esc(item.playerIn||'—')}</div>`
             + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↓</span> ${esc(item.playerOut||'—')}</div>`
             + `</div>`;
-          incidentHtml = host('substitute', direction, 'Substitution', '↑↓', bodyHtml);
+          incidentHtml = host('substitute', direction, 'Substitution', tlIconHtml('substitution'), bodyHtml);
           break;
         }
         case 'corner': {
           const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">Corner</span></div>`;
-          incidentHtml = host('notify', direction, null, '🚩', bodyHtml);
+          incidentHtml = host('notify', direction, null, tlIconHtml('corner'), bodyHtml);
           break;
         }
         case 'varReviewStart': case 'varReviewEnd': {
@@ -426,7 +472,7 @@
           } else {
             bodyHtml = item.reason?`<div class="obg-football-timeline-incident-review-reason">${esc(item.reason)}</div>`:'';
           }
-          incidentHtml = host('review', direction, direction==='full'?null:label, '🔲', bodyHtml);
+          incidentHtml = host('review', direction, direction==='full'?null:label, tlIconHtml(item.type), bodyHtml);
           break;
         }
         case 'kickOff': case 'secondHalfStart': {
@@ -567,38 +613,10 @@
       }
       const inj1Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD&&(it.addedMinute||0)>0),50-INJURY_ZONE,maxInj1CenterPct);
       const inj2Map=rankInjuryPositions(hItems.filter(it=>(it.minute||0)===PD*2&&(it.addedMinute||0)>0),100-INJURY_ZONE);
-      const GREY='#777a88', RED='#dd2727', ORANGE='#faa200', GREEN='#61aa00';
-      // Icon paths below are copied verbatim from the real Betsson production icon assets
-      // (b2bShared_sportsbook_timeline_*.svg / b2bShared_playerstatistics_*.svg, 16x16 viewBox),
-      // extracted from the Figma export zips — not hand-drawn approximations — so the QA tool
-      // renders pixel-identical shapes to the shipped product.
-      const ICON_SVG = {
-        // football.svg (grey ring) / football-1.svg (red ring) — white ball pattern is shared.
-        goal: c=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M5.56 2.70001C4.86 3.02668 4.23327 3.48001 3.72 4.04001L3.655 6.14501L5.46 6.73335L5.53333 6.68001L7.51333 5.24001L7.58667 5.19335V3.29075L5.56 2.70001ZM5.97993 9.94668L5.22667 7.62001L5.19333 7.53335L3.44147 6.95808L2.20667 8.68668C2.3 9.46668 2.54 10.2 2.90667 10.8533L4.9974 11.4287L6.01333 10.0333L5.97993 9.94668ZM10.4466 2.70001L8.41327 3.27721V5.19328L8.4866 5.23995L10.4733 6.67995L10.5466 6.73328L12.2866 6.16195V4.04001C11.7666 3.48001 11.1399 3.02668 10.4466 2.70001ZM12.5457 6.97061L10.8 7.52668L10.7733 7.61335L10.0133 9.94001L9.98667 10.0267L11.0251 11.453L13.0933 10.8467C13.46 10.1933 13.7067 9.46668 13.8 8.68668L12.5457 6.97061ZM9.31327 10.52H6.68667L5.64247 11.9541L6.86667 13.7267C7.23333 13.8 7.61333 13.8333 8 13.8333C8.39333 13.8333 8.77333 13.8 9.14 13.7267V13.72L10.3385 11.9279L9.31327 10.52Z"/><path fill="${c}" d="M9.12966 1.42639C4.56932 0.676388 0.676388 4.56932 1.42639 9.12966C1.88059 11.8917 4.10826 14.1193 6.87032 14.5736C11.4307 15.3236 15.3236 11.4307 14.5736 6.87032C14.1194 4.10832 11.8917 1.88066 9.12966 1.42639ZM8.41332 3.27719L10.4467 2.69999C11.14 3.02666 11.7667 3.47999 12.2867 4.03999V6.16192L10.5467 6.73326L10.4733 6.67992L8.48666 5.23992L8.41332 5.19325V3.27719ZM5.55999 2.69999L7.58666 3.29072V5.19332L7.51332 5.23999L5.53332 6.67999L5.45999 6.73332L3.65499 6.14499L3.71999 4.03999C4.23332 3.47999 4.85999 3.02666 5.55999 2.69999ZM4.99739 11.4287L2.90666 10.8533C2.53999 10.2 2.29999 9.46666 2.20665 8.68666L3.44146 6.95806L5.19332 7.53332L5.22666 7.61999L5.97992 9.94666L6.01326 10.0333L4.99739 11.4287ZM9.13999 13.72V13.7267C8.77332 13.8 8.39332 13.8333 7.99999 13.8333C7.61332 13.8333 7.23332 13.8 6.86666 13.7267L5.64246 11.9541L6.68666 10.52H9.31326L10.3384 11.9279L9.13999 13.72ZM11.0251 11.453L9.98666 10.0267L10.0133 9.93999L10.7733 7.61332L10.8 7.52666L12.5457 6.97059L13.8 8.68666C13.7067 9.46666 13.46 10.1933 13.0933 10.8467L11.0251 11.453Z"/></svg>`,
-        ownGoal: ()=>ICON_SVG.goal(RED),
-        // referee-card.svg (red) / referee-card-1.svg (orange) — identical card shape, different fill.
-        yellowCard: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.84696 1.49645L12.6425 3.04936C13.3538 3.23995 13.7759 3.97107 13.5853 4.68235L11.1697 13.6977C10.9791 14.409 10.248 14.8311 9.53669 14.6405L3.74114 13.0876C3.02985 12.897 2.60774 12.1659 2.79833 11.4546L5.21397 2.43926C5.40456 1.72797 6.13568 1.30586 6.84696 1.49645Z"/></svg>`,
-        redCard: ()=>ICON_SVG.yellowCard(RED),
-        // 2ndyellowcard.svg — card shape clipped, diagonal red/orange split.
-        secondYellow: ()=>`<svg viewBox="0 0 16 16"><path d="M2.84271 12.4889L13.333 3.64254C13.5074 3.93962 13.5673 4.30371 13.4712 4.66276L11.0555 13.6781C10.8649 14.3893 10.1338 14.8115 9.4225 14.6209L3.62694 13.0679C3.28839 12.9773 3.01535 12.7641 2.84271 12.4889Z" fill="${ORANGE}"/><path d="M13.333 3.64254C13.1619 3.35109 12.8806 3.12415 12.5284 3.02977L6.73284 1.47685C6.02156 1.28627 5.29044 1.70837 5.09985 2.41966L2.68421 11.4349C2.58433 11.8077 2.65263 12.1859 2.84271 12.4889L13.333 3.64254Z" fill="${RED}"/></svg>`,
-        // corners.svg — corner flag pennant.
-        corner: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.3916 2.18891L12.7495 5.25513L6.3916 8.32257V14.5245H5.33331V1.33337H6.3916V2.18891Z"/></svg>`,
-        // substitution.svg — solid up/down arrow shapes (not stroked lines).
-        substitution: ()=>`<svg viewBox="0 0 16 16"><path fill="${GREEN}" d="M8.51159 5.35764C8.05606 5.35764 7.83339 4.78427 8.14719 4.4551L10.9713 1.49265C11.1737 1.28028 11.4875 1.28028 11.69 1.49265L14.5141 4.4551C14.838 4.78427 14.6153 5.35764 14.1598 5.35764H12.3479V9.60491C12.3479 10.1889 11.8924 10.6667 11.3357 10.6667C10.779 10.6667 10.3235 10.1889 10.3235 9.60491V5.35764H8.51159Z"/><path fill="${RED}" d="M7.48772 10.6424C7.94325 10.6424 8.16592 11.2158 7.85212 11.545L5.02802 14.5074C4.82557 14.7198 4.51179 14.7198 4.30934 14.5074L1.48524 11.545C1.16132 11.2158 1.38402 10.6424 1.83952 10.6424H3.6514V6.3952C3.6514 5.81119 4.10689 5.33338 4.66362 5.33338C5.22034 5.33338 5.67585 5.81119 5.67585 6.3952V10.6424H7.48772Z"/></svg>`,
-        // penaltyscored.svg — camera glyph (lens) PLUS the same outer frame path as penaltyMissed,
-        // just colored to match (grey), so both variants share identical visual size/weight.
-        penaltyScored: c=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M6.77998 6.68357C6.42998 6.84691 6.11661 7.07357 5.85998 7.35357L5.82748 8.40607L6.72998 8.70024L7.75665 7.95357L7.79331 7.93024V6.97894L6.77998 6.68357ZM6.98995 10.3069L6.61331 9.14357L6.59665 9.10024L5.72071 8.8126L5.10332 9.6769C5.14998 10.0669 5.26998 10.4336 5.45331 10.7602L6.49868 11.0479L7.00665 10.3502L6.98995 10.3069ZM9.22328 6.68357L8.20661 6.97217V7.9302L8.24328 7.95354L9.23661 8.67354L9.27328 8.7002L10.1433 8.41454V7.35357C9.88328 7.07357 9.56994 6.84691 9.22328 6.68357ZM10.2728 8.81887L9.39998 9.0969L9.38664 9.14024L9.00664 10.3036L8.99331 10.3469L9.51254 11.0601L10.5466 10.7569C10.73 10.4302 10.8533 10.0669 10.9 9.6769L10.2728 8.81887ZM8.65661 10.5936H7.34331L6.82121 11.3106L7.43331 12.1969C7.61665 12.2336 7.80664 12.2502 7.99998 12.2502C8.19664 12.2502 8.38664 12.2336 8.56998 12.1969V12.1936L9.16921 11.2975L8.65661 10.5936Z"/><path fill="${c}" d="M8.56481 6.04652C6.28465 5.67152 4.33818 7.61798 4.71318 9.89815C4.94028 11.2791 6.05412 12.393 7.43515 12.6201C9.71534 12.9951 11.6618 11.0487 11.2868 8.76848C11.0597 7.38748 9.94584 6.27365 8.56481 6.04652ZM8.20661 6.97217L9.22328 6.68357C9.56994 6.84691 9.88328 7.07357 10.1433 7.35357V8.41454L9.27328 8.7002L9.23661 8.67354L8.24328 7.95354L8.20661 7.9302V6.97217ZM6.77998 6.68357L7.79331 6.97894V7.93024L7.75665 7.95357L6.72998 8.70024L5.82748 8.40607L5.85998 7.35357C6.11661 7.07357 6.42998 6.84691 6.77998 6.68357ZM6.49868 11.0479L5.45331 10.7602C5.26998 10.4336 5.14998 10.0669 5.10332 9.6769L5.72071 8.8126L6.59665 9.10024L6.61331 9.14357L6.98995 10.3069L7.00665 10.3502L6.49868 11.0479ZM8.56998 12.1936V12.1969C8.38664 12.2336 8.19664 12.2502 7.99998 12.2502C7.80664 12.2502 7.61665 12.2336 7.43331 12.1969L6.82121 11.3106L7.34331 10.5936H8.65661L9.16921 11.2975L8.56998 12.1936ZM9.51254 11.0601L8.99331 10.3469L9.00664 10.3036L9.38664 9.14024L9.39998 9.0969L10.2728 8.81887L10.9 9.6769C10.8533 10.0669 10.73 10.4302 10.5466 10.7569L9.51254 11.0601Z"/><path fill="${c}" d="M3.33331 4.66665C2.96458 4.66665 2.66665 4.96458 2.66665 5.33331V12C2.66665 12.3687 2.36871 12.6666 1.99998 12.6666C1.63125 12.6666 1.33331 12.3687 1.33331 12V5.33331C1.33331 4.22918 2.22918 3.33331 3.33331 3.33331H12.6666C13.7708 3.33331 14.6666 4.22918 14.6666 5.33331V12C14.6666 12.3687 14.3687 12.6666 14 12.6666C13.6312 12.6666 13.3333 12.3687 13.3333 12V5.33331C13.3333 4.96458 13.0354 4.66665 12.6666 4.66665H3.33331Z"/></svg>`,
-        // penaltymissed.svg — same camera glyph PLUS viewfinder corner-bracket frame, both red.
-        penaltyMissed: ()=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M6.77998 6.68357C6.42998 6.84691 6.11661 7.07357 5.85998 7.35357L5.82748 8.40607L6.72998 8.70024L7.75665 7.95357L7.79331 7.93024V6.97894L6.77998 6.68357ZM6.98995 10.3069L6.61331 9.14357L6.59665 9.10024L5.72071 8.8126L5.10332 9.6769C5.14998 10.0669 5.26998 10.4336 5.45331 10.7602L6.49868 11.0479L7.00665 10.3502L6.98995 10.3069ZM9.22328 6.68357L8.20661 6.97217V7.9302L8.24328 7.95354L9.23661 8.67354L9.27328 8.7002L10.1433 8.41454V7.35357C9.88328 7.07357 9.56994 6.84691 9.22328 6.68357ZM10.2728 8.81887L9.39998 9.0969L9.38664 9.14024L9.00664 10.3036L8.99331 10.3469L9.51254 11.0601L10.5466 10.7569C10.73 10.4302 10.8533 10.0669 10.9 9.6769L10.2728 8.81887ZM8.65661 10.5936H7.34331L6.82121 11.3106L7.43331 12.1969C7.61665 12.2336 7.80664 12.2502 7.99998 12.2502C8.19664 12.2502 8.38664 12.2336 8.56998 12.1969V12.1936L9.16921 11.2975L8.65661 10.5936Z"/><path fill="${RED}" d="M8.56481 6.04652C6.28465 5.67152 4.33818 7.61798 4.71318 9.89815C4.94028 11.2791 6.05412 12.393 7.43515 12.6201C9.71534 12.9951 11.6618 11.0487 11.2868 8.76848C11.0597 7.38748 9.94584 6.27365 8.56481 6.04652ZM8.20661 6.97217L9.22328 6.68357C9.56994 6.84691 9.88328 7.07357 10.1433 7.35357V8.41454L9.27328 8.7002L9.23661 8.67354L8.24328 7.95354L8.20661 7.9302V6.97217ZM6.77998 6.68357L7.79331 6.97894V7.93024L7.75665 7.95357L6.72998 8.70024L5.82748 8.40607L5.85998 7.35357C6.11661 7.07357 6.42998 6.84691 6.77998 6.68357ZM6.49868 11.0479L5.45331 10.7602C5.26998 10.4336 5.14998 10.0669 5.10332 9.6769L5.72071 8.8126L6.59665 9.10024L6.61331 9.14357L6.98995 10.3069L7.00665 10.3502L6.49868 11.0479ZM8.56998 12.1936V12.1969C8.38664 12.2336 8.19664 12.2502 7.99998 12.2502C7.80664 12.2502 7.61665 12.2336 7.43331 12.1969L6.82121 11.3106L7.34331 10.5936H8.65661L9.16921 11.2975L8.56998 12.1936ZM9.51254 11.0601L8.99331 10.3469L9.00664 10.3036L9.38664 9.14024L9.39998 9.0969L10.2728 8.81887L10.9 9.6769C10.8533 10.0669 10.73 10.4302 10.5466 10.7569L9.51254 11.0601Z"/><path fill="${RED}" d="M3.33331 4.66665C2.96458 4.66665 2.66665 4.96458 2.66665 5.33331V12C2.66665 12.3687 2.36871 12.6666 1.99998 12.6666C1.63125 12.6666 1.33331 12.3687 1.33331 12V5.33331C1.33331 4.22918 2.22918 3.33331 3.33331 3.33331H12.6666C13.7708 3.33331 14.6666 4.22918 14.6666 5.33331V12C14.6666 12.3687 14.3687 12.6666 14 12.6666C13.6312 12.6666 13.3333 12.3687 13.3333 12V5.33331C13.3333 4.96458 13.0354 4.66665 12.6666 4.66665H3.33331Z"/></svg>`,
-        // whistle.svg — referee whistle, reused for "Penalty" (awarded, undecided) and full-width Kick off band.
-        penaltyAwarded: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.18954 8.47146C6.42546 8.36596 6.69485 8.36075 6.93824 8.45714C7.18167 8.55356 7.37932 8.74384 7.48772 8.98579C7.59608 9.22782 7.60659 9.5023 7.51636 9.74816C7.42613 9.99398 7.24253 10.1913 7.0066 10.297C6.77059 10.4026 6.50077 10.4078 6.25725 10.3113C6.01389 10.2148 5.81609 10.0246 5.70777 9.78266C5.59952 9.54069 5.58959 9.26671 5.67978 9.02094C5.77003 8.77506 5.95353 8.57712 6.18954 8.47146Z"/><path fill="${c}" fill-rule="evenodd" clip-rule="evenodd" d="M4.96363 5.73383C5.82747 5.34713 6.8007 5.26947 7.726 5.51704L14.991 7.45258L14.0164 10.4454L10.448 10.1948C10.2199 11.4152 9.43183 12.4983 8.23251 13.0353C6.26734 13.9151 3.94085 12.9935 3.0385 10.978C2.8376 10.5292 2.72415 10.0619 2.69084 9.59972C2.14567 9.65436 1.59738 9.34986 1.35556 8.81C1.05508 8.13883 1.34248 7.35434 1.99683 7.06131C2.43066 6.86709 2.91581 6.93606 3.28264 7.19868C3.67483 6.57343 4.2443 6.05587 4.96363 5.73383ZM7.49358 6.47928C6.78372 6.29047 6.03545 6.3495 5.37183 6.64659C3.89814 7.30653 3.25175 9.06795 3.92847 10.5795C4.60524 12.0912 6.34978 12.7823 7.82366 12.1225C8.72282 11.72 9.3148 10.9094 9.48642 9.99034L9.64397 9.13943L13.3217 9.40115L13.7312 8.14269L10.2156 7.20519L10.1349 7.58149L10.0313 8.06651L9.07431 7.83735L9.17782 7.35297L9.26311 6.95193L7.49358 6.47928ZM2.83863 8.14594C2.76373 7.97863 2.56882 7.90107 2.40569 7.97407C2.24254 8.04711 2.17062 8.24424 2.24553 8.41157C2.32049 8.57863 2.51481 8.65559 2.67782 8.58279C2.70749 8.56951 2.73405 8.55319 2.7566 8.53396L2.7553 8.53201C2.78032 8.40899 2.8121 8.28546 2.84709 8.16482C2.84457 8.15918 2.84117 8.15163 2.83863 8.14594Z"/><path fill="${c}" d="M11.0704 2.67068C11.2439 2.50935 11.5083 2.49335 11.7006 2.63032L11.741 2.66157C11.9483 2.84386 11.9683 3.16003 11.7865 3.3673L10.6069 4.71235C10.4247 4.9196 10.1091 4.94007 9.90178 4.75857C9.69481 4.57692 9.67291 4.2608 9.85491 4.05284L11.0346 2.70779L11.0704 2.67068Z"/><path fill="${c}" d="M9.08147 1.93631C9.13541 1.66548 9.39876 1.49001 9.66936 1.54373L9.71884 1.5561C9.96118 1.6304 10.1125 1.87769 10.0619 2.13162L9.67196 4.09321C9.6214 4.34708 9.38646 4.51707 9.1342 4.49295L9.08342 4.48579C8.81299 4.43169 8.63697 4.16867 8.69084 3.8979L9.08147 1.93631Z"/><path fill="${c}" d="M7.40634 1.76248C7.65608 1.72086 7.90231 1.87448 7.97079 2.12381L8.44215 3.84972C8.51481 4.11531 8.35946 4.39028 8.09319 4.46365C7.82691 4.53644 7.55086 4.37965 7.47795 4.11339L7.00595 2.38878C6.93336 2.12352 7.08897 1.84745 7.35621 1.7742L7.40634 1.76248Z"/></svg>`,
-        varReviewStart: c=>`<svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7.5" rx="1" fill="none" stroke="${c}" stroke-width="1.3"/><line x1="6" y1="13" x2="10" y2="13" stroke="${c}" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="10.5" x2="8" y2="13" stroke="${c}" stroke-width="1.3"/></svg>`,
-        varReviewEnd: c=>ICON_SVG.varReviewStart(c),
-        injuryTime: c=>`<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="${c}" stroke-width="1.3"/><path d="M8 4.8V8l2.3 1.4" stroke="${c}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
-        kickOff: c=>ICON_SVG.penaltyAwarded(c),
-      };
-      const ICON_COLOR = {goal:GREY,ownGoal:RED,yellowCard:ORANGE,secondYellow:null,redCard:RED,corner:RED,substitution:null,penaltyScored:GREY,penaltyMissed:null,penaltyAwarded:GREY,varReviewStart:GREY,varReviewEnd:GREY,injuryTime:RED,kickOff:GREY};
-      const iconHtml = t => ICON_SVG[t] ? ICON_SVG[t](ICON_COLOR[t]) : '';
+      // Real icon SVGs are now defined once, shared at module scope (TL_ICON_SVG/
+      // TL_ICON_COLOR/tlIconHtml, near the top of this file) — used by both this
+      // Demo-mode horizontal bar AND renderReal's real-component port.
+      const iconHtml = tlIconHtml;
       const LABEL={goal:'Goal',ownGoal:'Own goal',yellowCard:'Yellow card',secondYellow:'2nd yellow card',redCard:'Red card',corner:'Corner',substitution:'Substitution',penaltyScored:'Penalty scored',penaltyMissed:'Penalty missed',penaltyAwarded:'Penalty',varReviewStart:'VAR review starts',varReviewEnd:'VAR review ends'};
       let hDots='';
       // Per the "Overlap requirements for incident timeline" spec (Timeline - FE Confluence)
@@ -787,7 +805,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.44';
+  const TL_TOOL_VERSION = 'v0.1.45';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
