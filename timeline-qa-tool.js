@@ -138,6 +138,18 @@
       .obg-football-timeline-incident-review-full{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
       .obg-football-timeline-incident-review-reason{font-size:11px;color:rgba(4,4,6,.7)}
 
+      /* Filter bar — ported from PR #20578 (SBEUJE-4840, still open/Code Review as of
+         this port), libs/betting/match-timeline/src/filter-bar/. Chip look approximates
+         the real <obg-badge> gen2-components primitive (type=brand/neutral, size=xl) via
+         a data-tl-selected attribute, since we can't instantiate the real badge component
+         itself — same technique as elsewhere in this file (real class names + our own CSS). */
+      .obg-match-timeline-filter-bar-wrapper{display:flex;align-items:center;flex-wrap:wrap;gap:var(--genos-spacing-l,12px);padding:8px 16px 0;height:var(--genos-dimension-xl,32px)}
+      .obg-match-timeline-filter-bar-chip{cursor:pointer;display:inline-flex;align-items:center;padding:4px 14px;border-radius:999px;font-family:'DM Sans',sans-serif}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="true"]{background:var(--genos-color-brand-primary,#ff6600)}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="false"].bordered{border:var(--genos-border-s,1px) solid var(--genos-color-neutral-6,#c4c6cc);background:transparent}
+      .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
+      .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
+
       #tl-panel.tl-theme-dark .obg-vertical-timeline-center-line{background:#353743}
       #tl-panel.tl-theme-dark .obg-football-incident-item-icon{background:#181A22;border-color:#33353f}
       #tl-panel.tl-theme-dark .obg-football-incident-item-details-title{color:#f5f5f7}
@@ -210,9 +222,51 @@
       return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}"><div class="obg-football-incident-item">${itemWrapper(direction, title, icon, bodyHtml)}</div></div>`;
     }
 
+    // Per PR #20578 (SBEUJE-4840 "Add filters for Vertical timeline", open/Code Review
+    // as of this port): the real FootballIncidentType enum groups our finer-grained
+    // internal incident types into coarser categories, and only 3 of them ("goal",
+    // "card", "corner") actually have a filter chip — "substitution"/"var"/"penalty"
+    // incidents DO carry a `type`, but have no corresponding chip, so they're only ever
+    // visible under "All". kickOff carries type "match-start" and fullTime carries type
+    // "match-end", but — per the real MOCK_FOOTBALL_TIMELINE_DATA — halfTime/
+    // secondHalfStart/injuryTime carry NO `type` field at all. The real filterChange()
+    // only keeps an incident when `incident.data?.type === chip.key || chip.key === ""`,
+    // so with NO type field, those three phase-bands actually disappear from the list
+    // under ANY specific chip (Goals/Cards/Corners) and only reappear under "All". This
+    // looks like an oversight, but it's exactly what the real, still-in-review PR does
+    // today — we replicate it faithfully rather than silently "fixing" it, and call it
+    // out here so nobody mistakes this tool's behavior for our own bug.
+    const FILTER_TYPE = {
+      goal:'goal', ownGoal:'goal',
+      yellowCard:'card', secondYellow:'card', redCard:'card',
+      corner:'corner',
+      substitution:'substitution',
+      varReviewStart:'var', varReviewEnd:'var',
+      penaltyScored:'penalty', penaltyMissed:'penalty', penaltyAwarded:'penalty',
+      kickOff:'match-start',
+      fullTime:'match-end',
+      // halfTime / secondHalfStart / injuryTime intentionally absent — no type, see above.
+    };
+    const CHIP_LABELS = { goal:'Goals', card:'Cards', corner:'Corners' };
+    const activeFilterKey = { all:'', goals:'goal', cards:'card', corners:'corner' }[window._tlFilter||'all'] ?? '';
+    // Only chips for categories that actually have at least one matching incident right
+    // now get shown, exactly like the real filtersAvailable computation in the container.
+    const presentCategories = [...new Set(chronological.map(it=>FILTER_TYPE[it.type]).filter(Boolean))]
+      .filter(cat => CHIP_LABELS[cat]);
+    let filterBarHtml = '';
+    if (presentCategories.length) {
+      const chipHtml = (key,label) => {
+        const isSelected = activeFilterKey===key;
+        return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${key===''?'all':(key==='goal'?'goals':key==='card'?'cards':'corners')}')">`
+          + `<span class="genos-typography-body-small ${isSelected?'selected':'not-selected'}">${label}</span></div>`;
+      };
+      filterBarHtml = `<div class="obg-match-timeline-filter-bar-wrapper">${chipHtml('','All')}${presentCategories.map(cat=>chipHtml(cat,CHIP_LABELS[cat])).join('')}</div>`;
+    }
+    const visibleItems = activeFilterKey==='' ? chronological : chronological.filter(it => FILTER_TYPE[it.type]===activeFilterKey);
+
     // Real component lists newest-first (see MOCK_FOOTBALL_TIMELINE_DATA ordering).
     let rows = '';
-    for (const item of chronological.slice().reverse()) {
+    for (const item of visibleItems.slice().reverse()) {
       const isHome = item.team==='home';
       const direction = PHASES.includes(item.type) || ((item.type==='varReviewStart'||item.type==='varReviewEnd') && !item.team)
         ? 'full' : (isHome ? 'left' : 'right');
@@ -241,8 +295,12 @@
         case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
           const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
           const title = item.type==='penaltyScored'?'Penalty Scored':(item.type==='penaltyMissed'?'Penalty Missed':'Penalty');
+          // Per the real mock data: the "Penalty" (undecided/awarded) variant uses a
+          // megaphone 📢 icon, distinct from the camera-goal 🥅 icon used once the
+          // outcome (scored/missed) is known.
+          const icon = item.type==='penaltyAwarded' ? '📢' : '🥅';
           const bodyHtml = scoreboardHtml(sc) + (item.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(item.player)}</div>`:'');
-          incidentHtml = host('penalty', direction, title, '🥅', bodyHtml);
+          incidentHtml = host('penalty', direction, title, icon, bodyHtml);
           break;
         }
         case 'substitution': {
@@ -291,7 +349,7 @@
           // in the middle scoreboard slot despite listing teamHome's name first. Do not
           // "fix" this without re-checking the real source first.
           const bodyHtml = `<div class="obg-football-timeline-incident-message-wrapper">`
-            + `<span class="obg-football-timeline-incident-message-title">${item.type==='halfTime'?'Half Time':'Full Time'}</span>`
+            + `<span class="obg-football-timeline-incident-message-title">${item.type==='halfTime'?'Half Time':'Match ends'}</span>`
             + `<div class="obg-football-timeline-incident-message-teams">`
             + `<div class="obg-football-timeline-incident-message-teams-team">${esc(home)}</div>`
             + `<div class="obg-football-timeline-incident-message-teams-scoreboard">${sc.away} - ${sc.home}</div>`
@@ -306,8 +364,8 @@
       rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
     }
     if (!rows) rows = '<div style="text-align:center;color:#999;padding:24px;font-size:13px;font-family:\'DM Sans\',sans-serif">No incidents yet</div>';
-    p.innerHTML = `<div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div>`
-      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline). Horizontal timeline & real backend data wiring are not yet shipped upstream — this view is vertical-only and driven entirely by manually injected test incidents.</div>`;
+    p.innerHTML = `<div class="obg-match-timeline-wrapper">${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline) + the still-open filter-bar PR #20578 (SBEUJE-4840). Horizontal timeline & real backend data wiring are not yet shipped upstream — this view is vertical-only and driven entirely by manually injected test incidents.</div>`;
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -559,6 +617,10 @@
  *    (1:1 from the merged, shipped libs/betting/match-timeline/src/vertical-timeline
  *    code — see renderReal()/`_tqInjectRealStyles` above) — real class names, real emoji
  *    icons, real per-type component structure. Not the invented Figma mock below.
+ *    Also includes a ported filter bar (All/Goals/Cards/Corners) from the still-open
+ *    PR #20578 (SBEUJE-4840, Code Review as of this port) — including its confirmed
+ *    real quirk where halfTime/secondHalfStart/injuryTime bands (no `type` field in the
+ *    real data model) disappear under any specific filter, not just under "All".
  *  - Demo:      our OWN invented mock tab+panel+CSS (horizontal bar + styled list) —
  *    a Figma-based visual preview only, useful for comparison, NOT real developer code.
  *
@@ -619,7 +681,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.42';
+  const TL_TOOL_VERSION = 'v0.1.43';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
