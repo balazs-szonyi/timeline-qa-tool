@@ -57,9 +57,16 @@
       #tl-tab-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;color:#5a5d70;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
       #tl-tab-btn.tl-active{color:#ff6600;border-bottom-color:#ff6600}
       #tl-panel{display:none;background:#f7f7f9;font-family:'DM Sans',sans-serif}
-      .tl-chips{display:flex;gap:8px;padding:14px 16px 0;flex-wrap:wrap}
-      .tl-chip{padding:6px 16px;border:1.5px solid #c4c6cc;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;background:#fff;color:#040406;font-family:inherit}
-      .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fff}
+      /* Real filter-bar classes (ported from PR #20578/SBEUJE-4840, see _tqInjectRealStyles)
+         are reused here too since Demo mode's chips now share the exact real markup —
+         duplicated (not shared/deduped) because only one of these two style blocks is
+         ever injected into the page per mode. */
+      .obg-match-timeline-filter-bar-wrapper{display:flex;align-items:center;flex-wrap:wrap;gap:var(--genos-spacing-l,12px);padding:14px 16px 0;height:var(--genos-dimension-xl,32px)}
+      .obg-match-timeline-filter-bar-chip{cursor:pointer;display:inline-flex;align-items:center;padding:4px 14px;border-radius:999px;font-family:'DM Sans',sans-serif}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="true"]{background:var(--genos-color-brand-primary,#ff6600)}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="false"].bordered{border:var(--genos-border-s,1px) solid var(--genos-color-neutral-6,#c4c6cc);background:transparent}
+      .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
+      .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
       .tl-hbar-wrap{padding:48px 16px 48px}
       .tl-hbar-track{position:relative;height:4px;border-radius:2px;background:#e2e3e8}
       .tl-hbar-progress{position:absolute;top:0;height:100%;background:#40b840;border-radius:2px}
@@ -101,8 +108,6 @@
 
       /* ── Dark theme overrides (colors sampled from the Figma dark-theme export) ── */
       #tl-panel.tl-theme-dark{background:#181A22}
-      #tl-panel.tl-theme-dark .tl-chip{border-color:#777A88;background:transparent;color:#B8B9BB}
-      #tl-panel.tl-theme-dark .tl-chip.tl-active{border-color:#ff6600;background:#ff6600;color:#fff}
       #tl-panel.tl-theme-dark .tl-hbar-track{background:#353743}
       #tl-panel.tl-theme-dark .tl-list::before{background:#353743}
       #tl-panel.tl-theme-dark .tl-minute{background:#181A22;color:#ff6600}
@@ -731,9 +736,16 @@
         }
       }
       if(!rows)rows='<div style="text-align:center;color:#999;padding:24px;font-size:13px">No incidents yet</div>';
-      // Per the "dev ready" Figma export (zip 23): filter pills are plain text (no icons),
-      // solid orange fill when active, outlined grey pill otherwise.
-      const chips=`<div class="tl-chips"><button class="tl-chip${filter==='all'?' tl-active':''}" onclick="window.tlSetFilter('all')">All</button>${hasGoals?`<button class="tl-chip${filter==='goals'?' tl-active':''}" onclick="window.tlSetFilter('goals')">Goals</button>`:''}${hasCards?`<button class="tl-chip${filter==='cards'?' tl-active':''}" onclick="window.tlSetFilter('cards')">Cards</button>`:''}${hasCorners?`<button class="tl-chip${filter==='corners'?' tl-active':''}" onclick="window.tlSetFilter('corners')">Corners</button>`:''}</div>`;
+      // Per user request: Demo-mode filter chips now reuse the EXACT same real DOM
+      // classes/markup as the real ported filter bar (renderReal's chipHtml, PR #20578 /
+      // SBEUJE-4840) instead of the tool's own bespoke .tl-chip pill style, so Demo mode
+      // visually matches the real product 1:1, not just approximates it.
+      const demoChip = (key,label) => {
+        const isSelected = filter===key;
+        return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${key}')">`
+          + `<span class="genos-typography-body-small ${isSelected?'selected':'not-selected'}">${label}</span></div>`;
+      };
+      const chips=`<div class="obg-match-timeline-filter-bar-wrapper">${demoChip('all','All')}${hasGoals?demoChip('goals','Goals'):''}${hasCards?demoChip('cards','Cards'):''}${hasCorners?demoChip('corners','Corners'):''}</div>`;
       // Per the "dev ready" Figma export (zip 23): no separate Home/Away/TIMELINE header row on
       // the desktop widget — the incident list starts right after the horizontal progress bar.
       p.innerHTML=`${chips}<div class="tl-hbar-wrap"><div class="tl-hbar-track"><div class="tl-hbar-progress" style="left:0;width:${pct1}%"></div><div class="tl-hbar-progress" style="left:50%;width:${pct2}%"></div>${knobPct!=null?`<div class="tl-hbar-knob" style="left:${knobPct}%"></div>`:''}<div class="tl-hbar-markers">${hDots}</div>${items.length?`<div class="tl-hbar-time">${curMinDisplay}:00</div>`:''}</div></div><div class="tl-list">${rows}</div><div class="tl-disclaimer">The score displayed and further information (e.g. time, scorer) is for reference only. We do not guarantee the accuracy of this information.</div>`;
@@ -810,7 +822,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.46';
+  const TL_TOOL_VERSION = 'v0.1.47';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
