@@ -548,7 +548,12 @@
       const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
       const GOALS=['goal','ownGoal','penaltyScored'], CARDS=['yellowCard','secondYellow','redCard'];
       const hasGoals=items.some(i=>GOALS.includes(i.type)), hasCards=items.some(i=>CARDS.includes(i.type)), hasCorners=items.some(i=>i.type==='corner');
-      const hItems=items.filter(i=>!PHASES.includes(i.type)&&(GOALS.includes(i.type)||CARDS.includes(i.type)));
+      // Per SBEUJE-6150 AC, the horizontal timeline bar ONLY ever shows goal/own-goal and
+      // card markers — NOT penalties, subs, VAR or corners, even though a scored penalty
+      // is also a "goal" for vertical-timeline filter-chip purposes (GOALS above). Use a
+      // dedicated, narrower list here so the horizontal bar stays spec-accurate.
+      const HORIZ_GOALS=['goal','ownGoal'];
+      const hItems=items.filter(i=>!PHASES.includes(i.type)&&(HORIZ_GOALS.includes(i.type)||CARDS.includes(i.type)));
       // Per "When the match starts we should colour the 1st part" (Timeline - FE Confluence
       // spec, horizontal timeline section): the very first of the 90 one-minute sections is
       // coloured in immediately at kick off, before any other incident exists — the match
@@ -805,7 +810,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.45';
+  const TL_TOOL_VERSION = 'v0.1.46';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
