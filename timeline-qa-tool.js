@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.40';
+  const TL_TOOL_VERSION = 'v0.1.41';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1471,6 +1471,14 @@
     // True last resort: no main-tabs container on the page at all (not a match/event page).
     if (!scrollerEl && !mainTabsEl) scrollerEl = document.querySelector('[test-id="scroller-content"]');
     const panelHostEl = findVisiblePanelContent(scrollerEl);
+    // In the single-view case (no real Statistics/Stream tabs), the score/video header
+    // lives in `.obg-m-event-main-tabs-custom-panel-header`, a SIBLING of the panel-content
+    // we render our Timeline content into — NOT a child of it (unlike the real multi-tab
+    // layout, where that same header sits INSIDE panel-content and therefore already gets
+    // hidden for free when switching away from "Match"). Track it separately so we can hide
+    // it in sync whenever our synthetic tab bar is used; it's null/no-op in the real
+    // multi-tab case since that markup doesn't exist there.
+    const matchHeaderEl = mainTabsEl && mainTabsEl.querySelector('.obg-m-event-main-tabs-custom-panel-header');
     if (!scrollerEl || !panelHostEl) {
       tlStatus('⚠ No event tab bar found — navigate to a specific match page first (not a listing/odds page)', true);
       // Also flash the button itself so the error is impossible to miss, regardless
@@ -1547,6 +1555,7 @@
       tabBtn.addEventListener('click', () => {
         const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
         Array.from(ph.children).forEach(c => { if (c.id !== 'tl-panel') c.style.display = 'none'; });
+        if (matchHeaderEl) matchHeaderEl.style.display = 'none';
         let tp = document.getElementById('tl-panel');
         if (!tp) { tp = document.createElement('div'); tp.id = 'tl-panel'; tp.style.cssText = 'width:100%;min-height:200px'; ph.appendChild(tp); }
         tp.style.display = 'block';
@@ -1562,6 +1571,7 @@
         synthMatchTab.addEventListener('click', () => {
           const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
+          if (matchHeaderEl) matchHeaderEl.style.display = '';
           const tp = document.getElementById('tl-panel');
           if (tp) tp.style.display = 'none';
           setActive(false);
@@ -1584,6 +1594,7 @@
           if ((qaPanel && qaPanel.contains(e.target)) || (tlContent && tlContent.contains(e.target))) return;
           const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
+          if (matchHeaderEl) matchHeaderEl.style.display = '';
           const tp = document.getElementById('tl-panel');
           if (tp) tp.style.display = 'none';
           setActive(false);
@@ -1615,6 +1626,9 @@
     // Remove our synthetic tab-bar host too (only present when the real event had no
     // Statistics/Stream tabs and we had to build our own scroller to attach into).
     document.querySelectorAll('.tl-synth-scroller').forEach(el => el.remove());
+    // Restore the score/video header too, in case it was hidden while Timeline was active
+    // (single-view events only — see matchHeaderEl in the inject handler).
+    document.querySelectorAll('.obg-m-event-main-tabs-custom-panel-header').forEach(el => el.style.display = '');
     // Restore panel content children
     document.querySelectorAll('.obg-uiuplift-panel-content').forEach(el => {
       Array.from(el.children).forEach(c => c.style.display = '');
