@@ -380,7 +380,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.39';
+  const TL_TOOL_VERSION = 'v0.1.40';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1378,24 +1378,44 @@
   // Some matches render `obg-m-event-main-tabs-container` with only the score header
   // and no Statistics/Stream tabs (nothing to switch between), so Angular never renders
   // the real `.obg-tabs-header-wrapper > obg-scroller > ... > [test-id=scroller-content]`
-  // tab-bar markup. Build a minimal self-contained equivalent using the SAME real CSS
-  // classes (`obg-scroller`, `obg-scroller-container`, `obg-scroller-content`) so the
-  // page's existing styles (flex row, 48px tab height, etc.) apply without us having to
-  // reinvent them, and attach it inside the container's own header — never falling back
-  // to an unrelated document-wide scroller.
+  // tab-bar markup at all — instead the score/video content is rendered directly via a
+  // `headerslot` div. Confirmed by comparing against a real multi-tab event (Match |
+  // Player Stats, e.g. qa.sbplayground1.net): there the tab row uses
+  // `.obg-tabs-header-wrapper > obg-scroller.obg-tabs-content > .obg-scroller-container >
+  // .obg-scroller-content > obg-tab-label(s) + .obg-tabs-underline`, positioned ABOVE the
+  // score/video box (which itself moves into `.obg-uiuplift-panel-content`).
+  // We replicate that exact structure (reusing the real CSS classes so existing page
+  // styles apply) and insert it as the FIRST child of the header — i.e. above the
+  // existing score/video content — so the end result looks identical to a real
+  // multi-tab event. Crucially, the real UI never shows a single lone tab, so we also
+  // synthesize a "Match" tab alongside Timeline (never Timeline by itself).
   function ensureMainTabsScroller(mainTabsEl) {
     const header = mainTabsEl.querySelector('.obg-uiuplift-header') || mainTabsEl;
-    const scroller = document.createElement('div');
-    scroller.className = 'obg-scroller obg-tabs-header-wrapper tl-synth-scroller';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'obg-tabs-header-wrapper tl-synth-scroller';
+    const scroller = document.createElement('obg-scroller');
+    scroller.className = 'obg-scroller genos-typography-body-regular obg-tabs-content obg-tabs-content-s obg-scroller-full-width';
+    scroller.setAttribute('fullwidth', '');
     const container = document.createElement('div');
     container.className = 'obg-scroller-container';
+    container.setAttribute('test-id', 'scroller-container');
     const content = document.createElement('div');
     content.className = 'obg-scroller-content';
     content.setAttribute('test-id', 'scroller-content');
-    content.style.cssText = 'display:flex;align-items:center;';
+
+    // Synthetic "Match" tab (active by default — the score/video content underneath
+    // is already the "Match" view) so Timeline never appears as a lone tab, matching
+    // the real Match | Player Stats reference layout.
+    const matchTab = document.createElement('obg-tab-label');
+    matchTab.id = 'tl-synth-match-tab';
+    matchTab.className = 'obg-tab-label active';
+    matchTab.innerHTML = '<div class="obg-tab-label-wrapper"><div class="obg-tab-label-content"><span>Match</span></div></div>';
+    content.appendChild(matchTab);
+
     container.appendChild(content);
     scroller.appendChild(container);
-    header.appendChild(scroller);
+    wrapper.appendChild(scroller);
+    header.insertBefore(wrapper, header.firstChild);
     return content;
   }
   function findVisiblePanelContent(scrollerEl) {
@@ -1506,6 +1526,11 @@
         // on. We hide it ourselves while our tab is active, and restore it when leaving.
         const underline = (scrollerEl.closest('obg-tabs') || document).querySelector('.obg-tabs-underline');
         if (underline) underline.style.opacity = active ? '0' : '';
+        // Synthetic "Match" tab (single-view events only, see ensureMainTabsScroller) needs
+        // its own active state kept in sync — real obg-tab-label CSS handles the visual
+        // (orange text/underline) via the `.active` class, same as any real tab.
+        const matchTab = document.getElementById('tl-synth-match-tab');
+        if (matchTab) matchTab.classList.toggle('active', !active);
       };
 
       // React live to the user toggling Light/Dark in Settings, without needing
@@ -1528,6 +1553,20 @@
         if (typeof window.tlRender === 'function') window.tlRender();
         setActive(true);
       });
+
+      // Synthetic "Match" tab (single-view events only) needs its own click handler to
+      // switch back — it's a plain element we created, not a real Angular tab, so nothing
+      // else would otherwise restore the match view when it's clicked.
+      const synthMatchTab = document.getElementById('tl-synth-match-tab');
+      if (synthMatchTab) {
+        synthMatchTab.addEventListener('click', () => {
+          const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
+          Array.from(ph.children).forEach(c => c.style.display = '');
+          const tp = document.getElementById('tl-panel');
+          if (tp) tp.style.display = 'none';
+          setActive(false);
+        });
+      }
 
       // Use a capture-phase listener on the document so the indicator reliably clears when
       // ANY other tab is clicked, even if the framework's own click handler stops propagation
