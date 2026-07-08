@@ -852,7 +852,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.53';
+  const TL_TOOL_VERSION = 'v0.1.54';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -2121,17 +2121,15 @@
       // Use a capture-phase listener on the document so the indicator reliably clears when
       // ANY other tab is clicked, even if the framework's own click handler stops propagation
       // during the bubble phase (capture always runs first, top-down, before that can happen).
+      // IMPORTANT: real tab bars only ever switch the active tab when you click a DIFFERENT
+      // tab in the SAME bar — clicking anywhere else on the page (empty space, event content,
+      // our own QA panel, etc.) never deactivates the current tab. Our listener must mirror
+      // that: only switch away when the click actually lands on another tab inside `scrollerEl`,
+      // never on a generic outside click (previously this fired on ANY outside click, which
+      // incorrectly bounced the user back to Match whenever they clicked away from the tab).
       document.addEventListener('click', (e) => {
         if (tabBtn.classList.contains('tl-active') && !tabBtn.contains(e.target)) {
-          // Ignore clicks inside our own rendered Timeline content or the floating
-          // Timeline QA control panel — only a click on another REAL tab (or elsewhere
-          // on the page) should deactivate our tab. Without this guard, clicking
-          // anything inside the QA panel (mode toggle, add incident, etc.) or even
-          // inside the rendered Timeline list itself would incorrectly bounce the
-          // user back to the previous tab.
-          const qaPanel = document.getElementById('tl-qa-panel');
-          const tlContent = document.getElementById('tl-panel');
-          if ((qaPanel && qaPanel.contains(e.target)) || (tlContent && tlContent.contains(e.target))) return;
+          if (!scrollerEl.contains(e.target)) return;
           const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
           if (matchHeaderEl) matchHeaderEl.style.display = '';
