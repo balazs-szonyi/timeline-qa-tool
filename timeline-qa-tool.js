@@ -831,7 +831,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.50';
+  const TL_TOOL_VERSION = 'v0.1.51';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1105,6 +1105,17 @@
               <option value="1">End of 1st Half</option>
               <option value="2">End of 2nd Half</option>
             </select>
+            <!-- Regular (non-phase) incidents that happen DURING stoppage time (e.g. a
+                 corner at 45+2') need their own explicit added-minute value, distinct
+                 from the base minute — otherwise the only way to represent "45+2'" is to
+                 type a raw minute of 47, which is genuinely ambiguous with a real 2nd-half
+                 minute 47 (reported bug: a 47' corner with a 4-min 1st-half injury time
+                 landed in the 2nd half). The half/injury-zone placement logic elsewhere
+                 (horizontalTimelineHtml's half1Items/half2Items split, and this file's own
+                 rankInjuryPositions/dotSpecs) already keys off minute<=PD plus a separate
+                 addedMinute field — so exposing this input lets any incident type be
+                 correctly tagged as "PD + addedMinute" instead of an inflated raw minute. -->
+            <input class="tl-qa-input" type="number" id="tl-added" placeholder="+min" style="width:60px;flex:none" title="Added/stoppage-time minute (e.g. 2 for 45+2')">
           </div>
 
           <div class="tl-qa-row" id="tl-row-goal">
@@ -1480,6 +1491,9 @@
     // combination like the one reported (e.g. minute=48 with "2 min added" shown at 45').
     $('tl-min').style.display          = isInjuryTime ? 'none' : '';
     $('tl-injury-half').style.display  = isInjuryTime ? '' : 'none';
+    // Regular incidents during stoppage time (e.g. a corner at 45+2') need their own
+    // addedMinute field — everything except phase bands can occur during added time.
+    $('tl-added').style.display        = isPhase ? 'none' : '';
     if (isInjuryTime) updateInjuryHalfMinute();
     else if (isPhase) $('tl-min').value = phaseDefaultMinute(t);
     if (isScore) updateScorePreview();
@@ -2210,16 +2224,25 @@
         // insertion below, so the (disabled) form value is never read directly here.
       }
     }
+    // Regular (non-phase) incidents get their own addedMinute, distinct from the base
+    // minute (see tl-added comment above) — required to correctly disambiguate e.g. a
+    // 45+2' corner (minute=45, addedMinute=2) from a genuine 2nd-half minute-47 event
+    // (minute=47, addedMinute=0), which the half/injury-zone placement logic elsewhere
+    // relies on (reported bug: a stoppage-time corner typed as raw minute=47 landed in
+    // the 2nd half instead of the 1st half's injury-time zone).
+    if (!PHASES.includes(type)) {
+      incident.addedMinute = parseInt($('tl-added').value, 10) || undefined;
+    }
     if (!window._tlIncidents) window._tlIncidents = [];
     insertChronological(window._tlIncidents, incident);
     recomputeAllScores();
     window.tlRender();
-    tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+"'" : ''}`);
+    tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+(incident.addedMinute?'+'+incident.addedMinute:'')+"'" : ''}`);
     tlUpdateCount();
     renderIncidentList();
     syncToMatchTab(incident);
     // Clear transient fields, then re-fill with fresh auto-suggested names for next add
-    ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext'].forEach(id => { const el = $(id); if(el) el.value=''; });
+    ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext','tl-added'].forEach(id => { const el = $(id); if(el) el.value=''; });
     updateScorePreview();
     updatePlayerNames();
   });
