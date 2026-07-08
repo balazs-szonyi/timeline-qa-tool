@@ -567,10 +567,18 @@
       // (or Start of 2nd Half) incident has actually been added and sorts before it —
       // until that marker exists, EVERYTHING (including any stoppage-time incidents)
       // belongs to half 1, full stop.
-      const halfBoundary = [...items].sort((a,b)=>sortKey(a)-sortKey(b))
+      // NOTE: this file has TWO separate top-level IIFEs — the real `sortKey()` (used by
+      // insertChronological/Add Incident) lives in the OTHER one, out of reach here, so we
+      // duplicate its (small, stable) logic locally rather than depending on cross-IIFE scope.
+      function localSortKey(it) {
+        const base=(it.minute||0)+(it.addedMinute||0)/100;
+        const closesHalf=it.type==='halfTime'||it.type==='secondHalfStart'||it.type==='fullTime';
+        return base+(closesHalf?0.5:0);
+      }
+      const halfBoundary = [...items].sort((a,b)=>localSortKey(a)-localSortKey(b))
         .find(it=>it.type==='halfTime'||it.type==='secondHalfStart');
-      const halfBoundaryKey = halfBoundary ? sortKey(halfBoundary) : null;
-      function isHalf2(it) { return halfBoundaryKey != null && sortKey(it) > halfBoundaryKey; }
+      const halfBoundaryKey = halfBoundary ? localSortKey(halfBoundary) : null;
+      function isHalf2(it) { return halfBoundaryKey != null && localSortKey(it) > halfBoundaryKey; }
       // Per "When the match starts we should colour the 1st part" (Timeline - FE Confluence
       // spec, horizontal timeline section): the very first of the 90 one-minute sections is
       // coloured in immediately at kick off, before any other incident exists — the match
@@ -844,7 +852,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.52';
+  const TL_TOOL_VERSION = 'v0.1.53';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -2267,7 +2275,7 @@
     renderIncidentList();
     syncToMatchTab(incident);
     // Clear transient fields, then re-fill with fresh auto-suggested names for next add
-    ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext','tl-added'].forEach(id => { const el = $(id); if(el) el.value=''; });
+    ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext','tl-added','tl-extra'].forEach(id => { const el = $(id); if(el) el.value=''; });
     updateScorePreview();
     updatePlayerNames();
   });
