@@ -603,7 +603,16 @@
       const trackWidthPx=Math.max((p.clientWidth||0)-32,120);
       const badgeWidthPx=String(curMinDisplay+':00').length*6.5+14;
       const dotHalfWidthPx=10, gapPx=6;
-      const maxInj1CenterPct=50-((badgeWidthPx/2+dotHalfWidthPx+gapPx)/trackWidthPx*100);
+      const badgeClearancePct=(badgeWidthPx/2+dotHalfWidthPx+gapPx)/trackWidthPx*100;
+      const maxInj1CenterPct=50-badgeClearancePct;
+      // Mirror of maxInj1CenterPct for the START of the 2nd half: a NORMAL (non-injury)
+      // incident occurring just a minute or two after half-time (e.g. reported bug: a red
+      // card at 47' with a 45' half) starts its dp calculation right at the 50% centre —
+      // exactly where the fixed live-time badge sits — with no equivalent clearance, so it
+      // rendered hidden behind the badge. Half 1's own dots never hit this because their
+      // formula already caps out 10% (INJURY_ZONE) short of centre by construction; half 2's
+      // formula had no matching floor, so we add one here.
+      const minHalf2StartPct=50+badgeClearancePct;
       function rankInjuryPositions(list,base,clampMaxPct){
         // Per the "Overlap requirements" spec: injury-time incidents are ranked
         // side-by-side by their DISTINCT added-minute value — incidents sharing the
@@ -650,7 +659,7 @@
         if(min===PD&&added>0){dp=inj1Map.get(it);timeKey='inj1-'+added;}
         else if(min===PD*2&&added>0){dp=inj2Map.get(it);timeKey='inj2-'+added;}
         else if(min<=PD){dp=(Math.min(min,PD)/PD)*normalW1;timeKey='n-'+min;}
-        else{dp=50+(Math.min(min-PD,PD)/PD)*normalW2;timeKey='n-'+min;}
+        else{dp=Math.max(50+(Math.min(min-PD,PD)/PD)*normalW2,minHalf2StartPct);timeKey='n-'+min;}
         return {it,dp,top,groupKey:timeKey+'|'+(top?'top':'bottom')};
       });
       const stackRank=new Map();
@@ -822,7 +831,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.48';
+  const TL_TOOL_VERSION = 'v0.1.49';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
