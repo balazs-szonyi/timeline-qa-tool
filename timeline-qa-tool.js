@@ -822,7 +822,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.47';
+  const TL_TOOL_VERSION = 'v0.1.48';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1423,21 +1423,36 @@
     after[side] += 1;
     scoreInput.value = `${after.home}-${after.away}`;
   }
+  // Bug fix (reported: Half Time/Match ends injected out of chronological order, and
+  // Half Time never showed the half-time score): phase incidents (kickOff/halfTime/
+  // secondHalfStart/fullTime/injuryTime) used to have their minute INPUT ROW hidden
+  // entirely, so `incident.minute` was always left undefined for them — every phase
+  // incident's sortKey collapsed to 0, so insertChronological() always shoved them to
+  // the very front of window._tlIncidents regardless of when they were actually added,
+  // and Half Time's "score as of its own minute" lookup (tlScoreAsOf(item.minute||0,…))
+  // silently used 0 instead of 45' too. Fix: keep the minute field visible for phases
+  // too (only the player-name field is irrelevant for them), and auto-suggest a sensible
+  // default minute per phase type (using the configurable period duration) whenever the
+  // incident type is switched, while still letting the user override it manually.
+  function phaseDefaultMinute(t) {
+    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+    return { kickOff: 0, halfTime: PD, secondHalfStart: PD, fullTime: PD * 2, injuryTime: PD }[t];
+  }
   function updateRows() {
     const t = $('tl-type').value;
     const isPhase = PHASES.includes(t);
     const isSub   = t === 'substitution';
     const isScore = GOAL_TYPES.includes(t);
-    $('tl-row-base').style.display  = isPhase ? 'none' : 'flex';
-    // Player name is irrelevant for substitutions (Player out/in are used instead),
-    // and the assist/score row is only relevant for goal-scoring incident types
-    // (auto-computed & disabled below) — cards/corners/etc. never show it.
-    $('tl-player').style.display    = isSub ? 'none' : '';
+    $('tl-row-base').style.display  = 'flex';
+    // Player name is irrelevant for substitutions (Player out/in are used instead) and
+    // for phase bands (no scorer/carded player involved) — everything else shows it.
+    $('tl-player').style.display    = (isSub || isPhase) ? 'none' : '';
     $('tl-row-goal').style.display  = isScore ? 'flex' : 'none';
     $('tl-row-sub').style.display   = isSub ? 'flex' : 'none';
     $('tl-row-phase').style.display = isPhase ? 'flex' : 'none';
     $('tl-team').style.display      = (t === 'kickOff') ? 'none' : '';
     $('tl-score').disabled = isScore;
+    if (isPhase) $('tl-min').value = phaseDefaultMinute(t);
     if (isScore) updateScorePreview();
     updatePlayerNames();
   }
@@ -2130,7 +2145,14 @@
     const type = $('tl-type').value;
     const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
     const incident = { type, team: $('tl-team').value, _id: Date.now() };
-    if (!PHASES.includes(type)) incident.minute = parseInt($('tl-min').value) || undefined;
+    // Always capture a minute now, even for phase incidents (see updateRows()/
+    // phaseDefaultMinute() fix above) — previously phases were left with `minute`
+    // undefined, which collapsed their chronological sortKey to 0 and broke both
+    // ordering and the Half Time score-as-of lookup.
+    {
+      const parsedMin = parseInt($('tl-min').value, 10);
+      incident.minute = Number.isNaN(parsedMin) ? (PHASES.includes(type) ? phaseDefaultMinute(type) : undefined) : parsedMin;
+    }
     if (type === 'substitution') {
       incident.playerOut = $('tl-pout').value.trim() || undefined;
       incident.playerIn  = $('tl-pin').value.trim()  || undefined;
