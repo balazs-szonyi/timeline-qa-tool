@@ -150,14 +150,109 @@
       .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
       .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
 
+      /* Horizontal timeline — ported from PR #20504 (SBEUJE-6553, still open/Code Review
+         as of this port), libs/betting/match-timeline/src/horizontal-timeline/**. Real
+         component tree: HorizontalTimelineComponent > HorizontalTimelineProgressContainer
+         (wraps obg-progress-bar + absolutely-positioned incident groups) >
+         HorizontalTimelineStackedIncidentsComponent (vertical icon stack per minute-slot).
+         Class names/CSS below are copied 1:1 from the real .scss; --incident-pos is a
+         bare 0-100 number in the real code (uses 1cqw via container-type:inline-size)
+         -- we use calc(var(--incident-pos)*1%) here, mathematically equivalent once the
+         container has container-type:inline-size set, which we also replicate. */
+      .obg-horizontal-timeline{display:block;padding:24px 16px}
+      .obg-horizontal-timeline-wrapper{display:flex;align-items:center;justify-content:flex-start;gap:0;width:100%;height:32px}
+      .obg-horizontal-timeline-section-progressbar{width:100%}
+      .obg-horizontal-timeline-section-separator{z-index:5;margin:0 -1px}
+      .obg-horizontal-timeline-progress-container{position:relative;container-type:inline-size}
+      .obg-horizontal-timeline-progress-group{position:absolute;z-index:5;max-width:64px;left:0;transform:translateX(calc(var(--incident-pos)*1% - 50%))}
+      .obg-horizontal-timeline-progress-group.d-up{bottom:-8px}
+      .obg-horizontal-timeline-progress-group.d-down{top:-8px}
+      .obg-timeline-stack-items{position:relative;padding:0;display:flex;flex-direction:column;align-items:center}
+      .obg-timeline-stack-items.d-up{flex-direction:column-reverse}
+      .obg-timeline-stack-items.d-up .obg-timeline-stack-item:not(:last-child){margin-top:-12px}
+      .obg-timeline-stack-items.d-down .obg-timeline-stack-item:not(:first-child){margin-top:-12px}
+      .obg-timeline-stack-item{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;background:var(--genos-color-neutral-1,#f7f7f9);border-radius:50%;border:1px solid var(--genos-color-neutral-3,#e2e3e8);position:relative}
+      .obg-progress-bar{display:flex;align-items:center;gap:12px;width:100%}
+      .obg-progress-bar-line{flex:1;height:4px;border-radius:4px;background:var(--genos-color-neutral-4,#c4c6cc)}
+      .obg-progress-bar-filled{height:4px;border-radius:4px;background:var(--genos-custom-card-event-status,var(--genos-color-brand-secondary,#61aa00))}
+      /* Separator uses the real <obg-badge type="state" typeColor="open">; approximated
+         the same way as the filter chips (real class names + our own CSS, since the real
+         Angular badge component can't be instantiated by an injected script). */
+      .obg-horizontal-timeline-separator-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:var(--genos-state-open,#3a7bd5);color:var(--genos-text-color-on-state,#fff);font-family:'DM Sans',sans-serif}
+
       #tl-panel.tl-theme-dark .obg-vertical-timeline-center-line{background:#353743}
       #tl-panel.tl-theme-dark .obg-football-incident-item-icon{background:#181A22;border-color:#33353f}
       #tl-panel.tl-theme-dark .obg-football-incident-item-details-title{color:#f5f5f7}
       #tl-panel.tl-theme-dark .obg-vertical-timeline-marker-time{background:#181A22}
       #tl-panel.tl-theme-dark .obg-football-timeline-incident-scoreboard-wrapper,#tl-panel.tl-theme-dark .obg-football-timeline-incident-substitute-item{background:#353743;color:#f5f5f7}
+      #tl-panel.tl-theme-dark .obg-timeline-stack-item{background:#181A22;border-color:#33353f}
+      #tl-panel.tl-theme-dark .obg-progress-bar-line{background:#353743}
     `;
     document.head.appendChild(s);
   };
+
+  // ── Horizontal timeline — real component port (PR #20504, SBEUJE-6553) ─
+  // Faithful port of HorizontalTimelineComponent + HorizontalTimelineProgressContainer +
+  // HorizontalTimelineStackedIncidentsComponent (still an OPEN, unmerged PR as of this
+  // port — libs/betting/match-timeline/src/horizontal-timeline/**). Per SBEUJE-6150 AC,
+  // the real horizontal timeline only ever shows GOAL and CARD markers (no corners/subs/
+  // VAR/penalties) — everything else is vertical-timeline-only. Two fixed-width progress
+  // sections (one per half) with an <obg-badge type="state" typeColor="open"> separator
+  // between them once the 2nd half has started, matching the real container's
+  // `showHorizontalTimeline` + `horizontalTimelineSections` composition.
+  function horizontalTimelineHtml(chronological, PD) {
+    const HDOT_TYPES = { goal:'⚽', ownGoal:'⚽', yellowCard:'🟨', secondYellow:'🟨🟨', redCard:'🟥' };
+    const hItems = chronological.filter(it => HDOT_TYPES[it.type] && (it.addedMinute||0) === 0);
+    const allMins = hItems.map(it=>it.minute||0);
+    const kickedOff = chronological.some(it=>it.type==='kickOff');
+    const rawCurMin = allMins.length ? Math.max(...allMins) : 0;
+    const curMin = kickedOff ? Math.max(rawCurMin, chronological.length?1:0) : rawCurMin;
+    if (!kickedOff && !hItems.length) return ''; // nothing to show pre-kickoff
+
+    // Groups incidents sharing the same minute+side into one HorizontalTimelineIncidentGroup
+    // (real model: {minute, direction:'up'|'down', incidents:[]}), same convention as the
+    // Demo-mode horizontal bar: home => 'up', away => 'down'.
+    function buildGroups(list) {
+      const byKey = new Map();
+      for (const it of list) {
+        const key = (it.minute||0) + '|' + (it.team==='home'?'up':'down');
+        if (!byKey.has(key)) byKey.set(key, { minute: it.minute||0, direction: it.team==='home'?'up':'down', incidents: [] });
+        byKey.get(key).incidents.push(it);
+      }
+      return [...byKey.values()];
+    }
+    function stackHtml(group) {
+      const iconsHtml = group.incidents.map(it => `<div class="obg-timeline-stack-item">${HDOT_TYPES[it.type]||''}</div>`).join('');
+      return `<div class="obg-timeline-stack-items d-${group.direction}">${iconsHtml}</div>`;
+    }
+    function progressSection(minute, totalMinutes, groups) {
+      const pct = totalMinutes ? Math.max(0, Math.min(100, (minute/totalMinutes)*100)) : 0;
+      const groupsHtml = groups.map((g,idx) => {
+        const leftPct = totalMinutes ? Math.max(0, Math.min(100, (g.minute/totalMinutes)*100)) : 0;
+        return `<div class="obg-horizontal-timeline-progress-group d-${g.direction}" style="--incident-pos:${leftPct};z-index:${idx+1}">${stackHtml(g)}</div>`;
+      }).join('');
+      return `<div class="obg-horizontal-timeline-item obg-horizontal-timeline-section-progressbar">`
+        + `<div class="obg-horizontal-timeline-progress-container">`
+        + `<div class="obg-progress-bar"><div class="obg-progress-bar-line"><div class="obg-progress-bar-filled" style="width:${pct}%"></div></div></div>`
+        + groupsHtml
+        + `</div></div>`;
+    }
+    function separatorSection(content) {
+      return `<div class="obg-horizontal-timeline-item obg-horizontal-timeline-section-separator"><div class="obg-horizontal-timeline-separator-badge">${content}</div></div>`;
+    }
+
+    const half1Items = hItems.filter(it => (it.minute||0) <= PD);
+    const half2Items = hItems.filter(it => (it.minute||0) > PD);
+    const half1Elapsed = Math.min(curMin, PD);
+    const half2Elapsed = curMin > PD ? Math.min(curMin-PD, PD) : 0;
+
+    let sections = progressSection(half1Elapsed, PD, buildGroups(half1Items));
+    if (curMin > PD) {
+      sections += separatorSection('HT');
+      sections += progressSection(half2Elapsed, PD, buildGroups(half2Items.map(it=>({...it, minute:(it.minute||0)-PD}))));
+    }
+    return `<div class="obg-horizontal-timeline"><div class="obg-horizontal-timeline-wrapper">${sections}</div></div>`;
+  }
 
   // ── tlRender: real ported markup (used by "Data only" mode) ─────────────
   // Faithful 1:1 port of the ACTUAL shipped Angular vertical-timeline component tree
@@ -171,8 +266,14 @@
   //    the generic notification markup with a 🚩 icon as a clearly-approximate stand-in.
   //  - "2nd yellow card" reuses the real generic card component (it takes `icon` as a
   //    plain input, no dedicated component exists for this variant either).
-  //  - The real design has NO horizontal timeline shipped yet (still an open, unmerged
-  //    PR #20504) — this renders vertical-only, matching what's actually live today.
+  //  - Horizontal timeline (PR #20504, SBEUJE-6553) is ALSO ported now (see
+  //    horizontalTimelineHtml below), even though that PR is still open/Code Review and
+  //    not merged to main — same rationale as the filter bar: real developer code exists,
+  //    so we show it, clearly labelled as sourced from an in-review PR in the disclaimer.
+  //    Per SBEUJE-6150 AC it only ever shows goal/card markers (no corners/subs/VAR/pens).
+  //  - Real icons (`ico-goal` etc.) load from the site's own NgRx icon store at runtime;
+  //    no bundled SVG/icon-library PR was found for CPD-4353/SBEUJE-6152, so both the
+  //    vertical AND horizontal ports keep using emoji stand-ins for icons.
   function renderReal(p) {
     const items = (window._tlIncidents||[]).filter(i=>i.status!=='cancelled');
     const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
@@ -364,8 +465,13 @@
       rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
     }
     if (!rows) rows = '<div style="text-align:center;color:#999;padding:24px;font-size:13px;font-family:\'DM Sans\',sans-serif">No incidents yet</div>';
-    p.innerHTML = `<div class="obg-match-timeline-wrapper">${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
-      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline) + the still-open filter-bar PR #20578 (SBEUJE-4840). Horizontal timeline & real backend data wiring are not yet shipped upstream — this view is vertical-only and driven entirely by manually injected test incidents.</div>`;
+    // Per SBOF-9706/9619/9809 (Expected Period Duration contract) — same config knob the
+    // Demo-mode renderer already exposes via the QA panel's "Match config" section.
+    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+    const horizontalHtml = horizontalTimelineHtml(chronological, PD);
+    const horizontalWrapperHtml = horizontalHtml ? `<div class="obg-match-timeline-horizontal-wrapper">${horizontalHtml}</div>` : '';
+    p.innerHTML = `<div class="obg-match-timeline-wrapper">${horizontalWrapperHtml}${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline) + two still-open PRs: horizontal timeline #20504 (SBEUJE-6553) and the filter-bar #20578 (SBEUJE-4840). Real backend/NgRx data wiring is not yet shipped upstream (container still hardcodes mock data) — this view is driven entirely by manually injected test incidents.</div>`;
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -681,7 +787,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.43';
+  const TL_TOOL_VERSION = 'v0.1.44';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
