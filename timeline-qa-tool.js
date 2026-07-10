@@ -852,7 +852,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.54';
+  const TL_TOOL_VERSION = 'v0.1.55';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1446,6 +1446,13 @@
 
   // ── Dynamic form rows ──────────────────────────────────────────────────
   const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+  // Per SBEUJE-6564: a VAR incident's layout depends on which feed provided it —
+  // OPTA carries team info (rendered under the Home/Away side, normal row treatment),
+  // RunningBall does not (rendered as a centered, full-width generic band — see
+  // isNoTeamVarBand in tlRender()). The team select below is swapped to a 3-option
+  // feed-source picker only while a VAR type is selected, so testers can explicitly
+  // choose which feed's layout to exercise instead of being forced into Home/Away.
+  const VAR_TYPES = ['varReviewStart','varReviewEnd'];
 
   // ── Realistic player name auto-fill (never mixes home/away sides) ──────
   const HOME_PLAYERS = ['Harry Kane','Marcus Rashford','Jude Bellingham','Declan Rice','Kyle Walker','Phil Foden'];
@@ -1508,6 +1515,23 @@
     const isSub   = t === 'substitution';
     const isScore = GOAL_TYPES.includes(t);
     const isInjuryTime = t === 'injuryTime';
+    const isVar = VAR_TYPES.includes(t);
+    // Swap the team select's options between the normal Home/Away pair and the
+    // VAR-specific 3-option feed-source picker (Home/OPTA, Away/OPTA, No team/RunningBall)
+    // depending on the selected incident type (SBEUJE-6564).
+    const teamSelect = $('tl-team');
+    if (isVar && teamSelect.dataset.mode !== 'var') {
+      const prev = teamSelect.value;
+      teamSelect.innerHTML = '<option value="home">Home (OPTA feed)</option>'
+        + '<option value="away">Away (OPTA feed)</option>'
+        + '<option value="">📺 No team — generic layout (RunningBall feed)</option>';
+      teamSelect.value = (prev === 'home' || prev === 'away') ? prev : 'home';
+      teamSelect.dataset.mode = 'var';
+    } else if (!isVar && teamSelect.dataset.mode === 'var') {
+      teamSelect.innerHTML = '<option value="home">Home</option><option value="away">Away</option>';
+      teamSelect.value = 'home';
+      delete teamSelect.dataset.mode;
+    }
     $('tl-row-base').style.display  = 'flex';
     // Player name is irrelevant for substitutions (Player out/in are used instead) and
     // for phase bands (no scorer/carded player involved) — everything else shows it.
