@@ -205,8 +205,8 @@
          bare 0-100 number in the real code (uses 1cqw via container-type:inline-size)
          -- we use calc(var(--incident-pos)*1%) here, mathematically equivalent once the
          container has container-type:inline-size set, which we also replicate. */
-      .obg-horizontal-timeline{display:block;padding:24px 16px}
-      .obg-horizontal-timeline-wrapper{display:flex;align-items:center;justify-content:flex-start;gap:0;width:100%;height:32px}
+      .obg-horizontal-timeline{display:block;padding:24px 8px}
+      .obg-horizontal-timeline-wrapper{display:flex;align-items:center;justify-content:flex-start;gap:0;width:100%;height:80px}
       .obg-horizontal-timeline-section-progressbar{width:100%}
       .obg-horizontal-timeline-section-separator{z-index:5;margin:0 -1px}
       .obg-horizontal-timeline-progress-container{position:relative;container-type:inline-size}
@@ -219,13 +219,15 @@
       .obg-timeline-stack-items.d-down .obg-timeline-stack-item:not(:first-child){margin-top:-12px}
       .obg-timeline-stack-item{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;background:var(--genos-color-neutral-1,#f7f7f9);border-radius:50%;border:1px solid var(--genos-color-neutral-3,#e2e3e8);position:relative}
       .obg-timeline-stack-item svg{width:14px;height:14px;display:block}
-      .obg-progress-bar{display:flex;align-items:center;gap:12px;width:100%}
-      .obg-progress-bar-line{flex:1;height:4px;border-radius:4px;background:var(--genos-color-neutral-4,#c4c6cc)}
-      .obg-progress-bar-filled{height:4px;border-radius:4px;background:var(--genos-custom-card-event-status,var(--genos-color-brand-secondary,#61aa00))}
+      .obg-progress-bar{display:flex;align-items:center;gap:8px;width:100%}
+      .obg-progress-bar-line{flex:1;height:4px;border-radius:2px;background:var(--genos-color-neutral-4,#D2D4DA)}
+      .obg-progress-bar-filled{height:4px;border-radius:2px;background:var(--genos-custom-card-event-status,var(--genos-color-brand-secondary,#40B840))}
       /* Separator uses the real <obg-badge type="state" typeColor="open">; approximated
          the same way as the filter chips (real class names + our own CSS, since the real
-         Angular badge component can't be instantiated by an injected script). */
-      .obg-horizontal-timeline-separator-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:var(--genos-state-open,#3a7bd5);color:var(--genos-text-color-on-state,#fff);font-family:'DM Sans',sans-serif}
+         Angular badge component can't be instantiated by an injected script). Sizing now
+         pixel-matched to genos tokens: height=--genos-dimension-xs(20px), padding=0 --genos-spacing-l(8px),
+         border-radius=--genos-border-radius-xl(16px, visually full-pill at this height). */
+      .obg-horizontal-timeline-separator-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 8px;border-radius:16px;font-size:11px;font-weight:700;white-space:nowrap;background:var(--genos-state-open,#484B58);color:var(--genos-text-color-on-state,#FDFDFD);font-family:'DM Sans',sans-serif}
 
       #tl-panel.tl-theme-dark .obg-vertical-timeline-center-line{background:#353743}
       #tl-panel.tl-theme-dark .obg-football-incident-item-icon{background:#181A22;border-color:#33353f}
@@ -852,7 +854,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.55';
+  const TL_TOOL_VERSION = 'v0.1.56';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
