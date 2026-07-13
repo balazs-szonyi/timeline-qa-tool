@@ -183,6 +183,9 @@
 
       .obg-football-timeline-incident-review-full{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
       .obg-football-timeline-incident-review-reason{font-size:11px;color:rgba(4,4,6,.7)}
+      /* SBEUJE-7223: partial (title-only) incident — tool-only note, no real component
+         exists for this yet upstream since the feature is still In Progress on GitHub. */
+      .obg-timeline-incident-partial-note{font-size:11px;font-style:italic;color:var(--genos-color-brand-primary,#ff6600)}
 
       /* Filter bar — ported from PR #20578 (SBEUJE-4840, still open/Code Review as of
          this port), libs/betting/match-timeline/src/filter-bar/. Chip look approximates
@@ -366,6 +369,11 @@
       if (!oldNeu) return '';
       return `<div class="obg-football-timeline-incident-scoreboard-wrapper"><span>${oldNeu.old}</span><span> - </span><span class="bold">${oldNeu.neu}</span></div>`;
     }
+    // SBEUJE-7223: shared "title only, awaiting completion" body for a partial incident
+    // in the real (ported) component tree — mirrors the demo-mode tl-inc-partial-note.
+    function partialNoteHtml() {
+      return `<div class="obg-timeline-incident-partial-note">🧩 awaiting completion (SBEUJE-7223)</div>`;
+    }
     function itemWrapper(direction, title, icon, bodyHtml) {
       const isFull = direction==='full';
       return `<div class="obg-football-incident-item-wrapper d-${direction}">`
@@ -436,9 +444,14 @@
       switch (item.type) {
         case 'goal': case 'ownGoal': {
           const sc = goalScoreById.get(item);
-          const bodyHtml = scoreboardHtml(sc)
-            + (item.player?`<div class="obg-football-timeline-incident-goal-player">${esc(item.player)}</div>`:'')
-            + (item.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(item.assist)})</div>`:'');
+          // SBEUJE-7223: a "partial" (title-only) goal incident hasn't received its
+          // completing relReference'd event yet — scorer/assist details aren't known,
+          // so we show only the title + a note instead of blank/placeholder fields.
+          const bodyHtml = item.partial
+            ? partialNoteHtml()
+            : scoreboardHtml(sc)
+              + (item.player?`<div class="obg-football-timeline-incident-goal-player">${esc(item.player)}</div>`:'')
+              + (item.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(item.assist)})</div>`:'');
           incidentHtml = host('goal', direction, item.type==='ownGoal'?'Own Goal':'Goal', tlIconHtml(item.type), bodyHtml);
           break;
         }
@@ -458,7 +471,7 @@
           break;
         }
         case 'substitution': {
-          const bodyHtml = `<div class="obg-football-timeline-incident-substitute-wrapper">`
+          const bodyHtml = item.partial ? partialNoteHtml() : `<div class="obg-football-timeline-incident-substitute-wrapper">`
             + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↑</span> ${esc(item.playerIn||'—')}</div>`
             + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↓</span> ${esc(item.playerOut||'—')}</div>`
             + `</div>`;
@@ -473,7 +486,9 @@
         case 'varReviewStart': case 'varReviewEnd': {
           const label = item.type==='varReviewStart'?'VAR review starts':'VAR review ends';
           let bodyHtml;
-          if (direction==='full') {
+          if (item.partial) {
+            bodyHtml = partialNoteHtml();
+          } else if (direction==='full') {
             const m=`${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}`;
             bodyHtml = `<div class="obg-football-timeline-incident-review-full">${esc(label)} - ${m}'</div>`;
           } else {
@@ -746,7 +761,11 @@
           const isHome=item.team==='home';
           const icon=`<div class="tl-icon">${iconHtml(item.type)}</div>`;
           let body=`<div class="tl-inc-label">${LABEL[item.type]||item.type}</div>`;
-          if(item.type==='substitution'){body+=`<div class="tl-sub-list"><span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span><span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span></div>`;}
+          // SBEUJE-7223: a "partial" incident has only its title so far — the completing
+          // relReference'd event (IN/OUT names, scorer/assist, VAR reason) hasn't arrived
+          // yet, so we deliberately render nothing below the title, plus a tag noting it.
+          if(item.partial){body+=`<div class="tl-inc-partial-note">🧩 awaiting completion (SBEUJE-7223)</div>`;}
+          else if(item.type==='substitution'){body+=`<div class="tl-sub-list"><span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span><span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span></div>`;}
           else{
             if(item.player)body+=`<div class="tl-player">${item.player}</div>`;
             if(item.assist)body+=`<div class="tl-assist">(Assist: ${item.assist})</div>`;
@@ -854,7 +873,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.56';
+  const TL_TOOL_VERSION = 'v0.1.57';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -974,6 +993,12 @@
     .tl-qa-inc-cancel, .tl-qa-inc-restore { background: none; border: none; color: #ffb066; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 4px; flex: none; }
     .tl-qa-inc-cancel:hover, .tl-qa-inc-restore:hover { color: #fff; }
     .tl-qa-inc-cancelled-tag { color: #ffb066; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .tl-qa-inc-partial-tag { color: #66b3ff; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .tl-qa-inc-complete { background: none; border: none; color: #66b3ff; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 4px; flex: none; }
+    .tl-qa-inc-complete:hover { color: #fff; }
+    .tl-qa-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #e0e0e0; cursor: pointer; }
+    #tl-add-btn.tl-completing { background: #2b6fd1 !important; }
+    .tl-inc-partial-note, .obg-timeline-incident-partial-note { color: #66b3ff; font-size: 11px; font-style: italic; }
     .tl-qa-inc-empty { font-size: 11px; color: #666; text-align: center; padding: 6px; }
     .tl-tab-indicator {
       position: absolute; left: 8px; right: 8px; bottom: 0; height: 4px;
@@ -1156,7 +1181,16 @@
             <input class="tl-qa-input" type="number" id="tl-extra" placeholder="+min" style="width:60px;flex:none">
           </div>
 
+          <!-- SBEUJE-7223: Substitute/Goal/VAR incidents can now arrive from BE as a
+               "partial" event (Title only — no IN/OUT/scorer/reason details yet), later
+               completed by a second BE event linked via relReference. Only shown for the
+               incident types the ticket calls out (substitution + goal types + VAR types). -->
+          <div class="tl-qa-row" id="tl-row-partial" style="display:none">
+            <label class="tl-qa-checkbox-label"><input type="checkbox" id="tl-partial-chk"> 🧩 Partial (title only — per SBEUJE-7223)</label>
+          </div>
+
           <button class="tl-qa-btn green" id="tl-add-btn" style="width:100%">＋ Add Incident</button>
+          <button class="tl-qa-btn" id="tl-cancel-complete-btn" style="width:100%;display:none;margin-top:4px">✕ Cancel completing</button>
         </div>
       </div>
 
@@ -1387,7 +1421,12 @@
         ? `<button class="tl-qa-inc-restore" data-id="${item._id}" title="Restore (undo VAR cancellation)">↺</button>`
         : `<button class="tl-qa-inc-cancel" data-id="${item._id}" title="Cancel via VAR (SBOF-9514/9513)">⊘</button>`;
       const cancelledTag = cancelled ? ' <span class="tl-qa-inc-cancelled-tag">cancelled</span>' : '';
-      return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}${cancelledTag}</span>${cancelBtn}<button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
+      // SBEUJE-7223: a "partial" (title-only) incident still awaits its completing
+      // relReference'd event — surface a tag + explicit "Complete" action so testers
+      // can simulate that second event arriving, instead of just editing in place.
+      const partialTag = item.partial ? ' <span class="tl-qa-inc-partial-tag">partial</span>' : '';
+      const completeBtn = item.partial ? `<button class="tl-qa-inc-complete" data-id="${item._id}" title="Complete this partial incident (simulate the relReference'd follow-up event)">🧩→✓</button>` : '';
+      return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}${cancelledTag}${partialTag}</span>${completeBtn}${cancelBtn}<button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
     }).join('');
   }
   $('tl-qa-inc-list').addEventListener('click', e => {
@@ -1397,6 +1436,8 @@
     if (cancelBtn) { window.tlCancelIncident(cancelBtn.dataset.id); return; }
     const restoreBtn = e.target.closest('.tl-qa-inc-restore');
     if (restoreBtn) { window.tlRestoreIncident(restoreBtn.dataset.id); return; }
+    const completeBtn = e.target.closest('.tl-qa-inc-complete');
+    if (completeBtn) { window.tlStartCompleteIncident(completeBtn.dataset.id); return; }
   });
   window.tlRemoveIncident = function(id) {
     if (!window._tlIncidents) return;
@@ -1553,6 +1594,13 @@
     // Regular incidents during stoppage time (e.g. a corner at 45+2') need their own
     // addedMinute field — everything except phase bands can occur during added time.
     $('tl-added').style.display        = isPhase ? 'none' : '';
+    // SBEUJE-7223: partial (title-only) submission is only meaningful for the incident
+    // types the ticket names — substitute, goal-family and VAR — since those are the
+    // ones the real BE now streams in two steps (parent event, then a relReference'd
+    // completion event with the IN/OUT/scorer/reason details).
+    const isPartialCapable = isSub || isScore || isVar;
+    $('tl-row-partial').style.display = (isPartialCapable && !window._tlCompletingId) ? 'flex' : 'none';
+    if (!isPartialCapable) $('tl-partial-chk').checked = false;
     if (isInjuryTime) updateInjuryHalfMinute();
     else if (isPhase) $('tl-min').value = phaseDefaultMinute(t);
     if (isScore) updateScorePreview();
@@ -2250,6 +2298,30 @@
     if (!window._tlInjected) { tlStatus('Inject the tab first!', true); return; }
     const type = $('tl-type').value;
     const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+    // SBEUJE-7223: while "completing" a previously-injected partial incident, this same
+    // button instead merges the now-available details into the ORIGINAL incident object
+    // and marks it as completed (relReference set to its own reference, simulating the
+    // real BE's second, relReference'd event) — it must not create a brand new incident.
+    if (window._tlCompletingId) {
+      const inc = (window._tlIncidents || []).find(it => String(it._id) === String(window._tlCompletingId));
+      if (!inc) { tlCancelCompleteIncident(); tlStatus('Incident to complete no longer exists', true); return; }
+      if (inc.type === 'substitution') {
+        inc.playerOut = $('tl-pout').value.trim() || undefined;
+        inc.playerIn  = $('tl-pin').value.trim()  || undefined;
+      } else {
+        inc.player = $('tl-player').value.trim() || undefined;
+        if (GOAL_TYPES.includes(inc.type)) inc.assist = $('tl-assist').value.trim() || undefined;
+      }
+      inc.relReference = inc.reference;
+      delete inc.partial;
+      recomputeAllScores();
+      window.tlRender();
+      tlStatus(`Completed partial incident: ${inc.type} ${inc.minute}' (relReference → ${inc.reference})`);
+      renderIncidentList();
+      syncToMatchTab(inc);
+      tlCancelCompleteIncident();
+      return;
+    }
     const incident = { type, team: $('tl-team').value, _id: Date.now() };
     // Always capture a minute now, even for phase incidents (see updateRows()/
     // phaseDefaultMinute() fix above) — previously phases were left with `minute`
@@ -2267,7 +2339,18 @@
       const parsedMin = parseInt($('tl-min').value, 10);
       incident.minute = Number.isNaN(parsedMin) ? (PHASES.includes(type) ? phaseDefaultMinute(type) : undefined) : parsedMin;
     }
-    if (type === 'substitution') {
+    // SBEUJE-7223: substitute/goal/VAR incidents can be injected as "partial" (title
+    // only) — the real BE contract has them arrive as two events (a Parent carrying its
+    // own `reference`, and a later completing event carrying the same value in
+    // `relReference`). We simulate the Parent here and skip the detail fields entirely
+    // (rather than saving blank strings), so the render layer can tell "not yet known"
+    // apart from "known to be empty".
+    const isPartialCapable = type === 'substitution' || GOAL_TYPES.includes(type) || VAR_TYPES.includes(type);
+    const isPartial = isPartialCapable && $('tl-partial-chk').checked;
+    if (isPartial) {
+      incident.partial = true;
+      incident.reference = String(incident._id);
+    } else if (type === 'substitution') {
       incident.playerOut = $('tl-pout').value.trim() || undefined;
       incident.playerIn  = $('tl-pin').value.trim()  || undefined;
     } else if (PHASES.includes(type)) {
@@ -2294,15 +2377,46 @@
     insertChronological(window._tlIncidents, incident);
     recomputeAllScores();
     window.tlRender();
-    tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+(incident.addedMinute?'+'+incident.addedMinute:'')+"'" : ''}`);
+    tlStatus(`Added: ${type}${incident.minute ? ' '+incident.minute+(incident.addedMinute?'+'+incident.addedMinute:'')+"'" : ''}${isPartial ? ' (🧩 partial — title only)' : ''}`);
     tlUpdateCount();
     renderIncidentList();
     syncToMatchTab(incident);
     // Clear transient fields, then re-fill with fresh auto-suggested names for next add
     ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext','tl-added','tl-extra'].forEach(id => { const el = $(id); if(el) el.value=''; });
+    $('tl-partial-chk').checked = false;
     updateScorePreview();
     updatePlayerNames();
   });
+  // SBEUJE-7223: enter "completing" mode for a previously-injected partial incident —
+  // locks type/team/minute (they belong to the already-recorded Parent event) and lets
+  // the tester fill in only the details the simulated completing event would carry.
+  window.tlStartCompleteIncident = function(id) {
+    const inc = (window._tlIncidents || []).find(it => String(it._id) === String(id));
+    if (!inc) return;
+    window._tlCompletingId = id;
+    $('tl-type').value = inc.type;
+    $('tl-type').disabled = true;
+    updateRows();
+    $('tl-team').value = inc.team || 'home';
+    $('tl-team').disabled = true;
+    if (inc.type !== 'injuryTime') { $('tl-min').value = inc.minute; $('tl-min').disabled = true; }
+    ['tl-player','tl-assist','tl-pout','tl-pin'].forEach(id2 => { const el = $(id2); if (el) el.value = ''; });
+    $('tl-add-btn').textContent = `✓ Complete Incident (${inc.type} ${inc.minute || ''}')`;
+    $('tl-add-btn').classList.add('tl-completing');
+    $('tl-cancel-complete-btn').style.display = '';
+    tlStatus(`Completing partial incident — fill in the details and confirm (relReference → ${inc.reference})`);
+  };
+  window.tlCancelCompleteIncident = function() {
+    window._tlCompletingId = null;
+    $('tl-type').disabled = false;
+    $('tl-team').disabled = false;
+    $('tl-min').disabled = false;
+    $('tl-add-btn').textContent = '＋ Add Incident';
+    $('tl-add-btn').classList.remove('tl-completing');
+    $('tl-cancel-complete-btn').style.display = 'none';
+    updateRows();
+  };
+  $('tl-cancel-complete-btn').addEventListener('click', () => { tlCancelCompleteIncident(); tlStatus('Completion cancelled'); });
 
   // ── Drag ───────────────────────────────────────────────────────────────
   let dx=0, dy=0, dragging=false;
