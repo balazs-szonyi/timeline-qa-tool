@@ -187,8 +187,10 @@
          exists for this yet upstream since the feature is still In Progress on GitHub. */
       .obg-timeline-incident-partial-note{font-size:11px;font-style:italic;color:var(--genos-color-brand-primary,#ff6600)}
 
-      /* Filter bar — ported from PR #20578 (SBEUJE-4840, still open/Code Review as of
-         this port), libs/betting/match-timeline/src/filter-bar/. Chip look approximates
+      /* Filter bar — ported from PR #20578 (SBEUJE-4840; per audit 2026-07-14 the PR is
+         still open with new commits since our last port, but football-timeline.model.ts
+         itself — VERTICAL_TIMELINE_FILTERS — is unchanged: still only Goal/Card/Corner
+         chips), libs/betting/match-timeline/src/filter-bar/. Chip look approximates
          the real <obg-badge> gen2-components primitive (type=brand/neutral, size=xl) via
          a data-tl-selected attribute, since we can't instantiate the real badge component
          itself — same technique as elsewhere in this file (real class names + our own CSS). */
@@ -199,9 +201,10 @@
       .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
       .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
 
-      /* Horizontal timeline — ported from PR #20504 (SBEUJE-6553, still open/Code Review
-         as of this port), libs/betting/match-timeline/src/horizontal-timeline/**. Real
-         component tree: HorizontalTimelineComponent > HorizontalTimelineProgressContainer
+      /* Horizontal timeline — ported from PR #20504 (SBEUJE-6553); per audit 2026-07-14
+         the horizontal-timeline source tree is now ALSO present on the default branch
+         (not merged-PR-only anymore), libs/betting/match-timeline/src/horizontal-timeline/**.
+         Real component tree: HorizontalTimelineComponent > HorizontalTimelineProgressContainer
          (wraps obg-progress-bar + absolutely-positioned incident groups) >
          HorizontalTimelineStackedIncidentsComponent (vertical icon stack per minute-slot).
          Class names/CSS below are copied 1:1 from the real .scss; --incident-pos is a
@@ -245,12 +248,13 @@
 
   // ── Horizontal timeline — real component port (PR #20504, SBEUJE-6553) ─
   // Faithful port of HorizontalTimelineComponent + HorizontalTimelineProgressContainer +
-  // HorizontalTimelineStackedIncidentsComponent (still an OPEN, unmerged PR as of this
-  // port — libs/betting/match-timeline/src/horizontal-timeline/**). Per SBEUJE-6150 AC,
-  // the real horizontal timeline only ever shows GOAL and CARD markers (no corners/subs/
-  // VAR/penalties) — everything else is vertical-timeline-only. Two fixed-width progress
-  // sections (one per half) with an <obg-badge type="state" typeColor="open"> separator
-  // between them once the 2nd half has started, matching the real container's
+  // HorizontalTimelineStackedIncidentsComponent — per audit 2026-07-14 this source tree is
+  // now ALSO present on the default branch, not just the still-open PR — libs/betting/
+  // match-timeline/src/horizontal-timeline/**. Per SBEUJE-6150 AC, the real horizontal
+  // timeline only ever shows GOAL and CARD markers (no corners/subs/VAR/penalties) —
+  // everything else is vertical-timeline-only. Two fixed-width progress sections (one
+  // per half) with an <obg-badge type="state" typeColor="open"> separator between them
+  // once the 2nd half has started, matching the real container's
   // `showHorizontalTimeline` + `horizontalTimelineSections` composition.
   function horizontalTimelineHtml(chronological, PD) {
     const HDOT_TYPES = { goal:1, ownGoal:1, yellowCard:1, secondYellow:1, redCard:1 };
@@ -387,20 +391,128 @@
       return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}"><div class="obg-football-incident-item">${itemWrapper(direction, title, icon, bodyHtml)}</div></div>`;
     }
 
-    // Per PR #20578 (SBEUJE-4840 "Add filters for Vertical timeline", open/Code Review
-    // as of this port): the real FootballIncidentType enum groups our finer-grained
-    // internal incident types into coarser categories, and only 3 of them ("goal",
-    // "card", "corner") actually have a filter chip — "substitution"/"var"/"penalty"
-    // incidents DO carry a `type`, but have no corresponding chip, so they're only ever
-    // visible under "All". kickOff carries type "match-start" and fullTime carries type
-    // "match-end", but — per the real MOCK_FOOTBALL_TIMELINE_DATA — halfTime/
-    // secondHalfStart/injuryTime carry NO `type` field at all. The real filterChange()
-    // only keeps an incident when `incident.data?.type === chip.key || chip.key === ""`,
-    // so with NO type field, those three phase-bands actually disappear from the list
-    // under ANY specific chip (Goals/Cards/Corners) and only reappear under "All". This
-    // looks like an oversight, but it's exactly what the real, still-in-review PR does
-    // today — we replicate it faithfully rather than silently "fixing" it, and call it
-    // out here so nobody mistakes this tool's behavior for our own bug.
+    // ── Real `data` contract adapter (added 2026-07-14) ─────────────────────────
+    // Ground-truthed against vertical-timeline.model.ts (TimelineIncidentBase =
+    // {direction, icon, title, time} + TimelineIncident<T> = {id, type, data}) and the
+    // real MOCK_FOOTBALL_TIMELINE_DATA sample in football-timeline-temp-metadata.mock.ts
+    // (there is no runtime EventStatistic→component-data mapper shipped yet — SBEUJE-6153
+    // — so this mock IS the closest thing to ground truth for the exact per-type nested
+    // shape). Crucially: the REAL data object has NO "team" field at all — `direction`
+    // (left/right/full) is the only side signal a component ever receives, computed
+    // upstream by whatever real mapper eventually lands. Below we build that real-shaped
+    // `data` object FIRST from this tool's own flat QA-authoring fields (item.team/
+    // item.player/item.playerIn/...), then every renderX() function consumes ONLY `data`
+    // — mirroring each component's own .component.html 1:1 — instead of reaching into the
+    // flat QA item directly inside ad hoc per-case markup, like this file used to do.
+    function toRealData(item, direction) {
+      const time = `${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}'`;
+      switch (item.type) {
+        case 'goal': case 'ownGoal': {
+          const sc = goalScoreById.get(item);
+          return { direction, icon: tlIconHtml(item.type), title: item.type==='ownGoal'?'Own Goal':'Goal', time,
+            oldScore: sc?{goal:sc.old}:undefined, newScore: sc?{isHighlighted:true,goal:sc.neu}:undefined,
+            player: item.player, assist: item.assist };
+        }
+        case 'yellowCard': case 'secondYellow': case 'redCard':
+          return { direction, icon: tlIconHtml(item.type),
+            title: item.type==='redCard'?'Red Card':(item.type==='secondYellow'?'2nd Yellow Card':'Yellow Card'),
+            time, player: item.player };
+        case 'corner':
+          // FOOTBALL_TIMELINE_INCIDENT_COMPONENT_MAP: Corner reuses the Card component.
+          return { direction, icon: tlIconHtml('corner'), title: 'Corner', time, player: item.player };
+        case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
+          const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
+          return { direction, icon: tlIconHtml(item.type),
+            title: item.type==='penaltyScored'?'Penalty scored':(item.type==='penaltyMissed'?'Penalty missed':'Penalty'),
+            time, oldScore: sc?{goal:sc.old}:undefined, newScore: sc?{isHighlighted:true,goal:sc.neu}:undefined,
+            player: item.player };
+        }
+        case 'substitution':
+          return { direction, icon: tlIconHtml('substitution'), title: 'Substitution', time,
+            substitute: { out: item.playerOut, in: item.playerIn } };
+        case 'varReviewStart': case 'varReviewEnd':
+          return { direction, icon: tlIconHtml(item.type),
+            title: item.type==='varReviewStart'?'VAR review starts':'VAR review ends', time,
+            // per review.component.html, `review.reason` is only ever read when direction
+            // !== Full — the real mock's "full" review samples carry no `review` at all.
+            review: direction!=='full' ? { reason: item.reason } : undefined };
+        case 'kickOff':
+          return { direction, time, message: { notify: { text: 'Kick Off' } } };
+        case 'secondHalfStart':
+          return { direction, time, message: { notify: { text: 'Start of 2nd half time' } } };
+        case 'injuryTime':
+          return { direction, time, message: { notify: { text: 'Injury Time', suffix: `${item.extraMinutes||'?'} min added` } } };
+        case 'halfTime': case 'fullTime': {
+          const sc = item.type==='halfTime' ? combinedScoreAsOf(item.minute||0,false) : combinedScoreAsOf(null,true);
+          return { direction, time, message: { messageTitle: item.type==='halfTime'?'Half Time':'Match ends',
+            teamHome: { name: home, score: { goal: sc.home } }, teamAway: { name: away, score: { goal: sc.away } } } };
+        }
+        default: return { direction, time };
+      }
+    }
+
+    // Every renderX() below mirrors its real *.component.html 1:1, reading only `data`.
+    function renderGoalLike(data) {
+      const sb = (data.oldScore && data.newScore) ? scoreboardHtml({old:data.oldScore.goal, neu:data.newScore.goal}) : '';
+      const body = sb
+        + (data.player?`<div class="obg-football-timeline-incident-goal-player">${esc(data.player)}</div>`:'')
+        + (data.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(data.assist)})</div>`:'');
+      return host('goal', data.direction, data.title, data.icon, body);
+    }
+    function renderCardLike(data) {
+      const body = data.player?`<div class="obg-football-timeline-incident-card-player">${esc(data.player)}</div>`:'';
+      return host('card', data.direction, data.title, data.icon, body);
+    }
+    function renderPenalty(data) {
+      const sb = (data.oldScore && data.newScore) ? scoreboardHtml({old:data.oldScore.goal, neu:data.newScore.goal}) : '';
+      const body = sb + (data.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(data.player)}</div>`:'');
+      return host('penalty', data.direction, data.title, data.icon, body);
+    }
+    function renderSubstitute(data) {
+      const s = data.substitute||{};
+      const body = (s.in||s.out) ? `<div class="obg-football-timeline-incident-substitute-wrapper">`
+        + (s.out?`<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↑</span> ${esc(s.out)}</div>`:'')
+        + (s.in?`<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↓</span> ${esc(s.in)}</div>`:'')
+        + `</div>` : '';
+      return host('substitute', data.direction, data.title, data.icon, body);
+    }
+    function renderReview(data) {
+      const isFull = data.direction==='full';
+      const body = isFull
+        ? `<div class="obg-football-timeline-incident-review-full">${esc(data.title)} - ${esc(data.time)}</div>`
+        : (data.review && data.review.reason ? `<div class="obg-football-timeline-incident-review-reason">${esc(data.review.reason)}</div>` : '');
+      return host('review', data.direction, isFull?null:data.title, data.icon, body);
+    }
+    function renderNotification(data) {
+      const notify = data.message && data.message.notify;
+      if (!notify) return '';
+      const body = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${esc(notify.text||'')}</span>${notify.suffix?` - <span class="obg-football-timeline-incident-notify-suffix">${esc(notify.suffix)}</span>`:''}</div>`;
+      return host('notify', data.direction, null, '', body);
+    }
+    function renderMessage(data) {
+      const m = data.message;
+      if (!m) return '';
+      const hasTeams = m.teamAway && m.teamAway.score && m.teamHome && m.teamHome.score;
+      const body = `<div class="obg-football-timeline-incident-message-wrapper">`
+        + (m.messageTitle?`<span class="obg-football-timeline-incident-message-title">${esc(m.messageTitle)}</span>`:'')
+        + (hasTeams ? (`<div class="obg-football-timeline-incident-message-teams">`
+          + `<div class="obg-football-timeline-incident-message-teams-team">${esc(m.teamHome.name)}</div>`
+          + `<div class="obg-football-timeline-incident-message-teams-scoreboard">${m.teamAway.score.goal} - ${m.teamHome.score.goal}</div>`
+          + `<div class="obg-football-timeline-incident-message-teams-team">${esc(m.teamAway.name)}</div>`
+          + `</div>`) : '')
+        + `</div>`;
+      return host('message', data.direction, null, '', body);
+    }
+
+    // Per PR #20578 (SBEUJE-4840 "Add filters for Vertical timeline") and the real
+    // football-timeline.model.ts FootballTimelineIncidentType enum: the real filter
+    // chips (VERTICAL_TIMELINE_FILTERS) only cover 3 categories — Goal, Card, Corner —
+    // even though halfTime/secondHalfStart/injuryTime/kickOff/fullTime DO carry a real
+    // `type` value (message/notification/match-start/match-end), just not one of those
+    // 3 filterable categories. So they're only ever visible under "All", same net
+    // effect as this tool's FILTER_TYPE map leaving them unmapped (undefined), even
+    // though — corrected 2026-07-14 — it's not literally true that they have "no type
+    // field at all"; they simply don't belong to a chip-visible category.
     const FILTER_TYPE = {
       goal:'goal', ownGoal:'goal',
       yellowCard:'card', secondYellow:'card', redCard:'card',
@@ -410,7 +522,8 @@
       penaltyScored:'penalty', penaltyMissed:'penalty', penaltyAwarded:'penalty',
       kickOff:'match-start',
       fullTime:'match-end',
-      // halfTime / secondHalfStart / injuryTime intentionally absent — no type, see above.
+      // halfTime / secondHalfStart / injuryTime intentionally absent from this map —
+      // real type exists (message/notification) but has no matching filter chip, see above.
     };
     const CHIP_LABELS = { goal:'Goals', card:'Cards', corner:'Corners' };
     const activeFilterKey = { all:'', goals:'goal', cards:'card', corners:'corner' }[window._tlFilter||'all'] ?? '';
@@ -435,99 +548,30 @@
       const isHome = item.team==='home';
       const direction = PHASES.includes(item.type) || ((item.type==='varReviewStart'||item.type==='varReviewEnd') && !item.team)
         ? 'full' : (isHome ? 'left' : 'right');
+      const data = toRealData(item, direction);
       let markerTime = '';
       if (direction!=='full') {
-        const m=`${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}`;
-        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${m}'</div></div>`;
+        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${data.time}</div></div>`;
       }
       let incidentHtml = '';
-      switch (item.type) {
-        case 'goal': case 'ownGoal': {
-          const sc = goalScoreById.get(item);
-          // SBEUJE-7223: a "partial" (title-only) goal incident hasn't received its
-          // completing relReference'd event yet — scorer/assist details aren't known,
-          // so we show only the title + a note instead of blank/placeholder fields.
-          const bodyHtml = item.partial
-            ? partialNoteHtml()
-            : scoreboardHtml(sc)
-              + (item.player?`<div class="obg-football-timeline-incident-goal-player">${esc(item.player)}</div>`:'')
-              + (item.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(item.assist)})</div>`:'');
-          incidentHtml = host('goal', direction, item.type==='ownGoal'?'Own Goal':'Goal', tlIconHtml(item.type), bodyHtml);
-          break;
+      // SBEUJE-7223: a "partial" incident hasn't received its completing relReference'd
+      // event yet, so — for the types capable of being partial (goal-family, substitution,
+      // VAR review) — we show only the title + a note instead of the real nested fields.
+      if (item.partial && (GOAL_TYPES.includes(item.type) || item.type==='substitution' || VAR_TYPES.includes(item.type))) {
+        const typeClass = item.type==='substitution' ? 'substitute' : (VAR_TYPES.includes(item.type) ? 'review' : 'goal');
+        incidentHtml = host(typeClass, data.direction, data.title, data.icon, partialNoteHtml());
+      } else {
+        switch (item.type) {
+          case 'goal': case 'ownGoal': incidentHtml = renderGoalLike(data); break;
+          case 'yellowCard': case 'secondYellow': case 'redCard': incidentHtml = renderCardLike(data); break;
+          case 'corner': incidentHtml = renderCardLike(data); break;
+          case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': incidentHtml = renderPenalty(data); break;
+          case 'substitution': incidentHtml = renderSubstitute(data); break;
+          case 'varReviewStart': case 'varReviewEnd': incidentHtml = renderReview(data); break;
+          case 'kickOff': case 'secondHalfStart': case 'injuryTime': incidentHtml = renderNotification(data); break;
+          case 'halfTime': case 'fullTime': incidentHtml = renderMessage(data); break;
+          default: incidentHtml = '';
         }
-        case 'yellowCard': case 'secondYellow': case 'redCard': {
-          const icon = tlIconHtml(item.type);
-          const title = item.type==='redCard'?'Red Card':(item.type==='secondYellow'?'2nd Yellow Card':'Yellow Card');
-          const bodyHtml = item.player?`<div class="obg-football-timeline-incident-card-player">${esc(item.player)}</div>`:'';
-          incidentHtml = host('card', direction, title, icon, bodyHtml);
-          break;
-        }
-        case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
-          const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
-          const title = item.type==='penaltyScored'?'Penalty Scored':(item.type==='penaltyMissed'?'Penalty Missed':'Penalty');
-          const icon = tlIconHtml(item.type);
-          const bodyHtml = scoreboardHtml(sc) + (item.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(item.player)}</div>`:'');
-          incidentHtml = host('penalty', direction, title, icon, bodyHtml);
-          break;
-        }
-        case 'substitution': {
-          const bodyHtml = item.partial ? partialNoteHtml() : `<div class="obg-football-timeline-incident-substitute-wrapper">`
-            + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↑</span> ${esc(item.playerIn||'—')}</div>`
-            + `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↓</span> ${esc(item.playerOut||'—')}</div>`
-            + `</div>`;
-          incidentHtml = host('substitute', direction, 'Substitution', tlIconHtml('substitution'), bodyHtml);
-          break;
-        }
-        case 'corner': {
-          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">Corner</span></div>`;
-          incidentHtml = host('notify', direction, null, tlIconHtml('corner'), bodyHtml);
-          break;
-        }
-        case 'varReviewStart': case 'varReviewEnd': {
-          const label = item.type==='varReviewStart'?'VAR review starts':'VAR review ends';
-          let bodyHtml;
-          if (item.partial) {
-            bodyHtml = partialNoteHtml();
-          } else if (direction==='full') {
-            const m=`${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}`;
-            bodyHtml = `<div class="obg-football-timeline-incident-review-full">${esc(label)} - ${m}'</div>`;
-          } else {
-            bodyHtml = item.reason?`<div class="obg-football-timeline-incident-review-reason">${esc(item.reason)}</div>`:'';
-          }
-          incidentHtml = host('review', direction, direction==='full'?null:label, tlIconHtml(item.type), bodyHtml);
-          break;
-        }
-        case 'kickOff': case 'secondHalfStart': {
-          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${item.type==='kickOff'?'Kick Off':'Start of 2nd Half'}</span></div>`;
-          incidentHtml = host('notify', 'full', null, '', bodyHtml);
-          break;
-        }
-        case 'injuryTime': {
-          // Per the confirmed real MOCK_FOOTBALL_TIMELINE_DATA convention (see docblock
-          // above): plain hyphen-joined single line, e.g. "Injury Time - 3 min added".
-          const bodyHtml = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">Injury Time - ${item.extraMinutes||'?'} min added</span></div>`;
-          incidentHtml = host('notify', 'full', null, '', bodyHtml);
-          break;
-        }
-        case 'halfTime': case 'fullTime': {
-          const sc = item.type==='halfTime' ? combinedScoreAsOf(item.minute||0,false) : combinedScoreAsOf(null,true);
-          // NOTE: this "away score first, home score second" order looks backwards next
-          // to the visual layout (home name on the left, away name on the right) but is
-          // NOT a bug — it's a faithful 1:1 port of the real message.component.html
-          // template, which literally binds {{ teamAway.score }} - {{ teamHome.score }}
-          // in the middle scoreboard slot despite listing teamHome's name first. Do not
-          // "fix" this without re-checking the real source first.
-          const bodyHtml = `<div class="obg-football-timeline-incident-message-wrapper">`
-            + `<span class="obg-football-timeline-incident-message-title">${item.type==='halfTime'?'Half Time':'Match ends'}</span>`
-            + `<div class="obg-football-timeline-incident-message-teams">`
-            + `<div class="obg-football-timeline-incident-message-teams-team">${esc(home)}</div>`
-            + `<div class="obg-football-timeline-incident-message-teams-scoreboard">${sc.away} - ${sc.home}</div>`
-            + `<div class="obg-football-timeline-incident-message-teams-team">${esc(away)}</div>`
-            + `</div></div>`;
-          incidentHtml = host('message', 'full', null, '', bodyHtml);
-          break;
-        }
-        default: incidentHtml = '';
       }
       if (!incidentHtml) continue;
       rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
@@ -539,7 +583,7 @@
     const horizontalHtml = horizontalTimelineHtml(chronological, PD);
     const horizontalWrapperHtml = horizontalHtml ? `<div class="obg-match-timeline-horizontal-wrapper">${horizontalHtml}</div>` : '';
     p.innerHTML = `<div class="obg-match-timeline-wrapper">${horizontalWrapperHtml}${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
-      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline) + two still-open PRs: horizontal timeline #20504 (SBEUJE-6553) and the filter-bar #20578 (SBEUJE-4840). Real backend/NgRx data wiring is not yet shipped upstream (container still hardcodes mock data) — this view is driven entirely by manually injected test incidents.</div>`;
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline), the now-also-default-branch horizontal timeline (SBEUJE-6553), and the still-open filter-bar PR #20578 (SBEUJE-4840). Real backend/NgRx data wiring is not yet shipped upstream (container still hardcodes mock data) — this view is driven entirely by manually injected test incidents.</div>`;
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -735,16 +779,25 @@
       // has no associated team renders as a full-width phase band ("VAR review started –
       // 68'"), not as a normal left/right row — unlike a VAR review WITH team data, which
       // keeps the regular row treatment (icon + "VAR review starts/ends" label on its side).
+      // NOTE: the real review.component.html branches on `data.direction === directions.Full`
+      // (a value computed upstream, outside this tool's reach) — `!it.team` here is our
+      // best-effort approximation of that real signal using this tool's own data shape.
       const isNoTeamVarBand = it => (it.type==='varReviewStart'||it.type==='varReviewEnd') && !it.team;
+      // Fixed 2026-07-14: the real message.component.html middle scoreboard slot binds
+      // {{ teamAway.score }} - {{ teamHome.score }} (away first) even though the team
+      // NAME labels either side stay in home-left/away-right order — i.e. only the two
+      // score digits are swapped vs. what you'd naively expect. Our internal item.score
+      // string is stored "home-away", so we must reverse the two halves for display here.
+      const awayHomeOrder = sc => { const p=String(sc).split('-').map(s=>s.trim()); return p.length===2 ? `${p[1]} - ${p[0]}` : sc; };
       for(const item of visible){
         if(PHASES.includes(item.type) || isNoTeamVarBand(item)){
           const home=window._tlHomeTeam||'Home', away=window._tlAwayTeam||'Away';
           let icon='', txt='', scoreRow='';
           const minTxt=`${item.minute||''}${item.addedMinute?'+'+item.addedMinute:''}`;
           if(item.type==='kickOff'){txt='Kick off';}
-          else if(item.type==='halfTime'){txt='Half time';const sc=tlScoreAsOf(item.minute||0,false)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${sc.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
+          else if(item.type==='halfTime'){txt='Half time';const sc=tlScoreAsOf(item.minute||0,false)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${awayHomeOrder(sc)}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='secondHalfStart'){txt='Start of 2nd half time';}
-          else if(item.type==='fullTime'){txt='Match ends';const sc=tlScoreAsOf(null,true)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${sc.replace('-',' - ')}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
+          else if(item.type==='fullTime'){txt='Match ends';const sc=tlScoreAsOf(null,true)||item.scoreText;if(sc)scoreRow=`<div class="tl-phase-scoreline"><span class="tl-phase-team tl-home-team">${home}</span><span class="tl-phase-score">${awayHomeOrder(sc)}</span><span class="tl-phase-team tl-away-team">${away}</span></div>`;}
           else if(item.type==='injuryTime'){txt=`Injury time – ${item.extraMinutes||'?'} min added`;}
           else if(item.type==='varReviewStart'){txt=`VAR review started – <span class="tl-phase-minute">${minTxt}'</span>`;}
           else if(item.type==='varReviewEnd'){txt=`VAR review ended – <span class="tl-phase-minute">${minTxt}'</span>`;}
@@ -765,7 +818,12 @@
           // relReference'd event (IN/OUT names, scorer/assist, VAR reason) hasn't arrived
           // yet, so we deliberately render nothing below the title, plus a tag noting it.
           if(item.partial){body+=`<div class="tl-inc-partial-note">🧩 awaiting completion (SBEUJE-7223)</div>`;}
-          else if(item.type==='substitution'){body+=`<div class="tl-sub-list"><span class="tl-sub-in"><span class="tl-sub-arrow">↑</span> ${item.playerIn||'—'}</span><span class="tl-sub-out"><span class="tl-sub-arrow">↓</span> ${item.playerOut||'—'}</span></div>`;}
+          else if(item.type==='substitution'){
+            // Fixed 2026-07-14: real substitute.component.html renders OUT first (icon
+            // class "out", arrow ↑) then IN second (icon class "in", arrow ↓) — this
+            // Demo-mode row previously showed IN first with ↑, reversed vs. real markup.
+            body+=`<div class="tl-sub-list"><span class="tl-sub-out"><span class="tl-sub-arrow">↑</span> ${item.playerOut||'—'}</span><span class="tl-sub-in"><span class="tl-sub-arrow">↓</span> ${item.playerIn||'—'}</span></div>`;
+          }
           else{
             if(item.player)body+=`<div class="tl-player">${item.player}</div>`;
             if(item.assist)body+=`<div class="tl-assist">(Assist: ${item.assist})</div>`;
@@ -873,7 +931,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.57';
+  const TL_TOOL_VERSION = 'v0.1.59';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
