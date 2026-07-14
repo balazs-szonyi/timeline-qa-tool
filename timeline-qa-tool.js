@@ -931,7 +931,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.59';
+  const TL_TOOL_VERSION = 'v0.1.60';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1099,6 +1099,33 @@
             <button class="tl-qa-btn grey" id="tl-expose-obgrt" style="width:100%">🔓 Expose obgRt (reloads page)</button>
           </div>
           <div id="tl-obgrt-status" style="font-size:10px;padding:0 2px"></div>
+
+          <hr class="tl-qa-sep" style="margin:8px 0">
+          <div class="tl-qa-row">
+            <button class="tl-qa-btn grey" id="tl-force-real-tab" style="width:100%">🎯 Force REAL Timeline tab (live)</button>
+          </div>
+          <div id="tl-force-real-tab-status" style="font-size:10px;padding:0 2px"></div>
+          <details class="tl-qa-details">
+            <summary>ⓘ Why is this a separate step from the flag above?</summary>
+            <div>Confirmed by reading event-main-tabs.container.ts's getMainTabs(): the real
+            Timeline tab needs incidentsTimeline.enabled=true AND ALL of: the event is live,
+            it's football, and <code>scoreboard.gameStatistics</code> is a non-empty object —
+            this last part is completely independent of the feature flag and is NOT satisfied
+            by most test-environment events (their scoreboard responses simply omit
+            gameStatistics entirely). This button injects a minimal non-empty gameStatistics
+            payload via obgRt.injectMessage (needs "Expose obgRt" above first) so that
+            condition is met live, without a reload. Once the tab appears, its CONTENT is
+            still the hardcoded MOCK_FOOTBALL_TIMELINE_DATA (match-timeline.container.ts has
+            no real data wiring yet — SBEUJE-6153) — this button only unlocks the tab itself,
+            it does not feed the injected value into what's displayed inside it.
+            <br><br>Full recipe for a real deployed page (verified end-to-end):
+            <br>1) Enable "Auto-persist across REAL reloads" below + install its extension.
+            <br>2) Reload the page once (so incidentsTimeline.enabled=true at component
+            construction time — a plain toggle here is NOT enough by itself, it only affects
+            already-open pages until the next real reload).
+            <br>3) Click "Expose obgRt" if not already exposed.
+            <br>4) Click this button.</div>
+          </details>
 
           <hr class="tl-qa-sep" style="margin:8px 0">
           <div class="tl-qa-row">
@@ -1459,6 +1486,33 @@
       }
     } catch (err) {
       tlStatus('Match tab sync error: ' + err.message, true);
+    }
+  }
+
+  // ── Force the REAL Timeline tab to appear on a live deployed page ────────
+  // Ground-truthed against event-main-tabs.container.ts's getMainTabs(): tab
+  // visibility needs incidentsTimeline.enabled=true (handled by the Auto-persist
+  // helper above) AND the event to be live+football AND scoreboard.gameStatistics
+  // to be a non-empty object — a condition entirely independent of the feature
+  // flag, and one most test-env events never satisfy natively (their scoreboard
+  // payload simply omits gameStatistics). Injecting any non-empty gs object via
+  // the same real-time channel (window.obgRt.injectMessage, t:41) that
+  // SBEUJE-6121 wired into scoreboard.reducer.ts's gameStatistics field
+  // satisfies this live, without a reload. Verified: does NOT by itself change
+  // what's rendered inside the tab once open — match-timeline.container.ts
+  // still hardcodes MOCK_FOOTBALL_TIMELINE_DATA regardless (SBEUJE-6153).
+  function forceRealTimelineTab() {
+    try {
+      if (!window.obgRt || typeof window.obgRt.injectMessage !== 'function') {
+        tlStatus('Force tab skipped — click "Expose obgRt" first', true);
+        return;
+      }
+      const eventId = getEventIdFromPage();
+      if (!eventId) { tlStatus('Force tab skipped — event id not found in URL', true); return; }
+      window.obgRt.injectMessage({ id: eventId, t: 41, d: { gs: { qaForced: true, ts: Date.now() } } });
+      tlStatus('gameStatistics injected — Timeline tab should appear now if incidentsTimeline.enabled was already true at page load ✓');
+    } catch (err) {
+      tlStatus('Force tab error: ' + err.message, true);
     }
   }
 
@@ -2020,6 +2074,8 @@
     url.searchParams.append('exposeObgRt', 'true');
     window.open(url, '_self');
   });
+
+  $('tl-force-real-tab').addEventListener('click', forceRealTimelineTab);
 
   // ── Match config (Expected Period Duration, SBOF-9706/9619/9809) ────────
   window._tlConfig = window._tlConfig || { periodDuration: 45 };
