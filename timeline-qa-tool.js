@@ -931,7 +931,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.60';
+  const TL_TOOL_VERSION = 'v0.1.61';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1113,17 +1113,21 @@
             this last part is completely independent of the feature flag and is NOT satisfied
             by most test-environment events (their scoreboard responses simply omit
             gameStatistics entirely). This button injects a minimal non-empty gameStatistics
-            payload via obgRt.injectMessage (needs "Expose obgRt" above first) so that
-            condition is met live, without a reload. Once the tab appears, its CONTENT is
-            still the hardcoded MOCK_FOOTBALL_TIMELINE_DATA (match-timeline.container.ts has
-            no real data wiring yet — SBEUJE-6153) — this button only unlocks the tab itself,
-            it does not feed the injected value into what's displayed inside it.
+            payload via obgRt.injectMessage (needs "Expose obgRt" above first), preserving the
+            event's current spp/st so the rest of the scoreboard isn't clobbered (an earlier
+            version of this button sent gs alone, which wiped scorePerParticipant/statistics
+            to undefined via the store's naive Object.assign merge — fixed in v0.1.61). Once
+            the tab appears, its CONTENT is still the hardcoded MOCK_FOOTBALL_TIMELINE_DATA
+            (match-timeline.container.ts has no real data wiring yet — SBEUJE-6153) — this
+            button only unlocks the tab itself, it does not feed the injected value into what's
+            displayed inside it.
             <br><br>Full recipe for a real deployed page (verified end-to-end):
             <br>1) Enable "Auto-persist across REAL reloads" below + install its extension.
             <br>2) Reload the page once (so incidentsTimeline.enabled=true at component
             construction time — a plain toggle here is NOT enough by itself, it only affects
             already-open pages until the next real reload).
-            <br>3) Click "Expose obgRt" if not already exposed.
+            <br>3) Click "Expose obgRt" if not already exposed (also exposes obgState, needed
+            to read the current spp/st before re-sending them).
             <br>4) Click this button.</div>
           </details>
 
@@ -1501,6 +1505,19 @@
   // satisfies this live, without a reload. Verified: does NOT by itself change
   // what's rendered inside the tab once open — match-timeline.container.ts
   // still hardcodes MOCK_FOOTBALL_TIMELINE_DATA regardless (SBEUJE-6153).
+  //
+  // CRITICAL FIX: real-time-transformation.service.ts's scoreboardStatisticsUpdated()
+  // unconditionally maps ALL of {spp,st,cvs,pst,gs,eed,epc,epd} from the incoming
+  // message `d` object — so a message with ONLY `gs` set produces spp/st/cvs as
+  // `undefined`. And updateAllMapRealTimeState() (ngx.sportsbook.real-time/utils/
+  // redux/reducer.util.ts) merges via a naive `Object.assign({}, existing, newData)`,
+  // which DOES overwrite existing keys with an explicit `undefined` value. Sending
+  // {d:{gs:{...}}} alone therefore WIPES the event's real scorePerParticipant/
+  // statistics to undefined, breaking the scoreboard for everything else on the
+  // page (this was the actual cause of "nothing happens" — the tab computation
+  // silently breaks downstream once `scoreboard.statistics` turns undefined).
+  // Fix: read the CURRENT spp/st (same technique as syncToMatchTab above) and
+  // resend them unchanged alongside the new `gs`, so nothing else gets clobbered.
   function forceRealTimelineTab() {
     try {
       if (!window.obgRt || typeof window.obgRt.injectMessage !== 'function') {
@@ -1509,8 +1526,15 @@
       }
       const eventId = getEventIdFromPage();
       if (!eventId) { tlStatus('Force tab skipped — event id not found in URL', true); return; }
-      window.obgRt.injectMessage({ id: eventId, t: 41, d: { gs: { qaForced: true, ts: Date.now() } } });
-      tlStatus('gameStatistics injected — Timeline tab should appear now if incidentsTimeline.enabled was already true at page load ✓');
+      const state = window.xSbState || window.obgState;
+      const sb = state && state.sportsbook && state.sportsbook.scoreboard && state.sportsbook.scoreboard[eventId];
+      if (!sb) { tlStatus('Force tab skipped — scoreboard state not found (expose obgState too?)', true); return; }
+      const homeId = sb.participants[0].id, awayId = sb.participants[1].id;
+      const spp = {};
+      spp[homeId] = (sb.statistics?.[homeId]?.goalsScored?.value) || 0;
+      spp[awayId] = (sb.statistics?.[awayId]?.goalsScored?.value) || 0;
+      window.obgRt.injectMessage({ id: eventId, t: 41, d: { spp: spp, st: sb.statistics, cvs: sb.varState || 0, gs: { qaForced: true, ts: Date.now() } } });
+      tlStatus('gameStatistics injected (spp/st preserved) — Timeline tab should appear now if incidentsTimeline.enabled was already true at page load ✓');
     } catch (err) {
       tlStatus('Force tab error: ' + err.message, true);
     }
