@@ -57,7 +57,7 @@
       #tl-tab-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:none;background:transparent;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;color:#5a5d70;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
       #tl-tab-btn.tl-active{color:#ff6600;border-bottom-color:#ff6600}
       #tl-panel{display:none;background:#f7f7f9;font-family:'DM Sans',sans-serif}
-      /* Real filter-bar classes (ported from PR #20578/SBEUJE-4840, see _tqInjectRealStyles)
+      /* Real filter-bar classes (originally ported from PR #20578/SBEUJE-4840, see _tqInjectRealStyles)
          are reused here too since Demo mode's chips now share the exact real markup —
          duplicated (not shared/deduped) because only one of these two style blocks is
          ever injected into the page per mode. */
@@ -127,8 +127,8 @@
     document.head.appendChild(s);
   }
 
-  // ── Real component CSS (ported 1:1 from the shipped, merged vertical-timeline
-  // feature — libs/betting/match-timeline/src/vertical-timeline/** in sb-b2b-fe-app) ──
+  // ── Real component CSS (ported from libs/betting/match-timeline/src/vertical-timeline/**,
+  // including the in-review PR #20664 parent/children component changes) ──
   // Used only in "Data only" mode (see renderReal below). We ship our own copy of
   // this CSS instead of relying on the real lazy chunk having actually rendered once
   // on this page (its <style> is only injected by Angular the first time a real
@@ -183,14 +183,7 @@
 
       .obg-football-timeline-incident-review-full{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:rgba(4,4,6,.7)}
       .obg-football-timeline-incident-review-reason{font-size:11px;color:rgba(4,4,6,.7)}
-      /* SBEUJE-7223: partial (title-only) incident — tool-only note, no real component
-         exists for this yet upstream since the feature is still In Progress on GitHub. */
-      .obg-timeline-incident-partial-note{font-size:11px;font-style:italic;color:var(--genos-color-brand-primary,#ff6600)}
-
-      /* Filter bar — ported from PR #20578 (SBEUJE-4840; per audit 2026-07-14 the PR is
-         still open with new commits since our last port, but football-timeline.model.ts
-         itself — VERTICAL_TIMELINE_FILTERS — is unchanged: still only Goal/Card/Corner
-         chips), libs/betting/match-timeline/src/filter-bar/. Chip look approximates
+      /* Filter bar — ported from merged PR #20578 (SBEUJE-4840). Chip look approximates
          the real <obg-badge> gen2-components primitive (type=brand/neutral, size=xl) via
          a data-tl-selected attribute, since we can't instantiate the real badge component
          itself — same technique as elsewhere in this file (real class names + our own CSS). */
@@ -311,10 +304,9 @@
   }
 
   // ── tlRender: real ported markup (used by "Data only" mode) ─────────────
-  // Faithful 1:1 port of the ACTUAL shipped Angular vertical-timeline component tree
-  // (VerticalTimelineComponent + the 7 real football-incidents/* sub-components: card,
-  // goal, message, notification, penalty, review, substitute — all merged & deployed,
-  // see libs/betting/match-timeline/src/vertical-timeline/**). Unlike renderMock (our
+  // Port of the Angular vertical-timeline component tree, updated to draft PR #20664
+  // (VerticalTimelineComponent + the 7 football-incidents/* sub-components: card,
+  // goal, message, notification, penalty, review, substitute). Unlike renderMock (our
   // own invented Figma-based preview used by "Demo" mode), this function reproduces the
   // real DOM structure/class names AND real icon glyphs (TL_ICON_SVG, shared with the
   // Demo-mode horizontal bar — see top of file) exactly, so it stays true to what
@@ -324,10 +316,7 @@
   //    approximate stand-in (right component, generic wrapper).
   //  - "2nd yellow card" reuses the real generic card component (it takes `icon` as a
   //    plain input, no dedicated component exists for this variant either).
-  //  - Horizontal timeline (PR #20504, SBEUJE-6553) is ALSO ported now (see
-  //    horizontalTimelineHtml below), even though that PR is still open/Code Review and
-  //    not merged to main — same rationale as the filter bar: real developer code exists,
-  //    so we show it, clearly labelled as sourced from an in-review PR in the disclaimer.
+  //  - Horizontal timeline is also ported (see horizontalTimelineHtml below).
   //    Per SBEUJE-6150 AC it only ever shows goal/card markers (no corners/subs/VAR/pens).
   //  - Icons: real icons (`ico-goal` etc.) load from the site's own NgRx icon store at
   //    runtime via ImageIconDirective — no bundled SVG/icon-library PR was found for
@@ -349,7 +338,11 @@
     // MOCK_FOOTBALL_TIMELINE_DATA sample (goal.oldScore/newScore are single `goal` counts).
     // We replicate that derivation here rather than trusting the manually-typed "score"
     // text field, so the real-render path is internally self-consistent by construction.
-    const chronological = [...items].sort((a,b)=>(a.minute||0)-(b.minute||0)||(a.addedMinute||0)-(b.addedMinute||0));
+    const chronological = [...items].sort((a,b)=>
+      (a.minute||0)-(b.minute||0)
+      ||(a.addedMinute||0)-(b.addedMinute||0)
+      ||(a.second||0)-(b.second||0)
+    );
     let runHome=0, runAway=0;
     const goalScoreById = new Map();
     const runningAt = []; // {minute, home, away} snapshots after each goal, for half/full-time banners
@@ -373,11 +366,6 @@
       if (!oldNeu) return '';
       return `<div class="obg-football-timeline-incident-scoreboard-wrapper"><span>${oldNeu.old}</span><span> - </span><span class="bold">${oldNeu.neu}</span></div>`;
     }
-    // SBEUJE-7223: shared "title only, awaiting completion" body for a partial incident
-    // in the real (ported) component tree — mirrors the demo-mode tl-inc-partial-note.
-    function partialNoteHtml() {
-      return `<div class="obg-timeline-incident-partial-note">🧩 awaiting completion (SBEUJE-7223)</div>`;
-    }
     function itemWrapper(direction, title, icon, bodyHtml) {
       const isFull = direction==='full';
       return `<div class="obg-football-incident-item-wrapper d-${direction}">`
@@ -391,187 +379,176 @@
       return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}"><div class="obg-football-incident-item">${itemWrapper(direction, title, icon, bodyHtml)}</div></div>`;
     }
 
-    // ── Real `data` contract adapter (added 2026-07-14) ─────────────────────────
-    // Ground-truthed against vertical-timeline.model.ts (TimelineIncidentBase =
-    // {direction, icon, title, time} + TimelineIncident<T> = {id, type, data}) and the
-    // real MOCK_FOOTBALL_TIMELINE_DATA sample in football-timeline-temp-metadata.mock.ts
-    // (there is no runtime EventStatistic→component-data mapper shipped yet — SBEUJE-6153
-    // — so this mock IS the closest thing to ground truth for the exact per-type nested
-    // shape). Crucially: the REAL data object has NO "team" field at all — `direction`
-    // (left/right/full) is the only side signal a component ever receives, computed
-    // upstream by whatever real mapper eventually lands. Below we build that real-shaped
-    // `data` object FIRST from this tool's own flat QA-authoring fields (item.team/
-    // item.player/item.playerIn/...), then every renderX() function consumes ONLY `data`
-    // — mirroring each component's own .component.html 1:1 — instead of reaching into the
-    // flat QA item directly inside ad hoc per-case markup, like this file used to do.
-    function toRealData(item, direction) {
-      const time = `${item.minute||0}${item.addedMinute?'+'+item.addedMinute:''}'`;
-      switch (item.type) {
-        case 'goal': case 'ownGoal': {
-          const sc = goalScoreById.get(item);
-          return { direction, icon: tlIconHtml(item.type), title: item.type==='ownGoal'?'Own Goal':'Goal', time,
-            oldScore: sc?{goal:sc.old}:undefined, newScore: sc?{isHighlighted:true,goal:sc.neu}:undefined,
-            player: item.player, assist: item.assist };
-        }
-        case 'yellowCard': case 'secondYellow': case 'redCard':
-          return { direction, icon: tlIconHtml(item.type),
-            title: item.type==='redCard'?'Red Card':(item.type==='secondYellow'?'2nd Yellow Card':'Yellow Card'),
-            time, player: item.player };
-        case 'corner':
-          // FOOTBALL_TIMELINE_INCIDENT_COMPONENT_MAP: Corner reuses the Card component.
-          return { direction, icon: tlIconHtml('corner'), title: 'Corner', time, player: item.player };
-        case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': {
-          const sc = item.type==='penaltyScored' ? goalScoreById.get(item) : null;
-          return { direction, icon: tlIconHtml(item.type),
-            title: item.type==='penaltyScored'?'Penalty scored':(item.type==='penaltyMissed'?'Penalty missed':'Penalty'),
-            time, oldScore: sc?{goal:sc.old}:undefined, newScore: sc?{isHighlighted:true,goal:sc.neu}:undefined,
-            player: item.player };
-        }
-        case 'substitution':
-          return { direction, icon: tlIconHtml('substitution'), title: 'Substitution', time,
-            substitute: { out: item.playerOut, in: item.playerIn } };
-        case 'varReviewStart': case 'varReviewEnd':
-          return { direction, icon: tlIconHtml(item.type),
-            title: item.type==='varReviewStart'?'VAR review starts':'VAR review ends', time,
-            // per review.component.html, `review.reason` is only ever read when direction
-            // !== Full — the real mock's "full" review samples carry no `review` at all.
-            review: direction!=='full' ? { reason: item.reason } : undefined };
-        case 'kickOff':
-          return { direction, time, message: { notify: { text: 'Kick Off' } } };
-        case 'secondHalfStart':
-          return { direction, time, message: { notify: { text: 'Start of 2nd half time' } } };
-        case 'injuryTime':
-          return { direction, time, message: { notify: { text: 'Injury Time', suffix: `${item.extraMinutes||'?'} min added` } } };
-        case 'halfTime': case 'fullTime': {
-          const sc = item.type==='halfTime' ? combinedScoreAsOf(item.minute||0,false) : combinedScoreAsOf(null,true);
-          return { direction, time, message: { messageTitle: item.type==='halfTime'?'Half Time':'Match ends',
-            teamHome: { name: home, score: { goal: sc.home } }, teamAway: { name: away, score: { goal: sc.away } } } };
-        }
-        default: return { direction, time };
-      }
-    }
-
-    // Every renderX() below mirrors its real *.component.html 1:1, reading only `data`.
-    function renderGoalLike(data) {
-      const sb = (data.oldScore && data.newScore) ? scoreboardHtml({old:data.oldScore.goal, neu:data.newScore.goal}) : '';
-      const body = sb
-        + (data.player?`<div class="obg-football-timeline-incident-goal-player">${esc(data.player)}</div>`:'')
-        + (data.assist?`<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(data.assist)})</div>`:'');
-      return host('goal', data.direction, data.title, data.icon, body);
-    }
-    function renderCardLike(data) {
-      const body = data.player?`<div class="obg-football-timeline-incident-card-player">${esc(data.player)}</div>`:'';
-      return host('card', data.direction, data.title, data.icon, body);
-    }
-    function renderPenalty(data) {
-      const sb = (data.oldScore && data.newScore) ? scoreboardHtml({old:data.oldScore.goal, neu:data.newScore.goal}) : '';
-      const body = sb + (data.player?`<div class="obg-football-timeline-incident-penalty-player">${esc(data.player)}</div>`:'');
-      return host('penalty', data.direction, data.title, data.icon, body);
-    }
-    function renderSubstitute(data) {
-      const s = data.substitute||{};
-      const body = (s.in||s.out) ? `<div class="obg-football-timeline-incident-substitute-wrapper">`
-        + (s.out?`<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon out">↑</span> ${esc(s.out)}</div>`:'')
-        + (s.in?`<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon in">↓</span> ${esc(s.in)}</div>`:'')
-        + `</div>` : '';
-      return host('substitute', data.direction, data.title, data.icon, body);
-    }
-    function renderReview(data) {
-      const isFull = data.direction==='full';
-      const body = isFull
-        ? `<div class="obg-football-timeline-incident-review-full">${esc(data.title)} - ${esc(data.time)}</div>`
-        : (data.review && data.review.reason ? `<div class="obg-football-timeline-incident-review-reason">${esc(data.review.reason)}</div>` : '');
-      return host('review', data.direction, isFull?null:data.title, data.icon, body);
-    }
-    function renderNotification(data) {
-      const notify = data.message && data.message.notify;
-      if (!notify) return '';
-      const body = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${esc(notify.text||'')}</span>${notify.suffix?` - <span class="obg-football-timeline-incident-notify-suffix">${esc(notify.suffix)}</span>`:''}</div>`;
-      return host('notify', data.direction, null, '', body);
-    }
-    function renderMessage(data) {
-      const m = data.message;
-      if (!m) return '';
-      const hasTeams = m.teamAway && m.teamAway.score && m.teamHome && m.teamHome.score;
-      const body = `<div class="obg-football-timeline-incident-message-wrapper">`
-        + (m.messageTitle?`<span class="obg-football-timeline-incident-message-title">${esc(m.messageTitle)}</span>`:'')
-        + (hasTeams ? (`<div class="obg-football-timeline-incident-message-teams">`
-          + `<div class="obg-football-timeline-incident-message-teams-team">${esc(m.teamHome.name)}</div>`
-          + `<div class="obg-football-timeline-incident-message-teams-scoreboard">${m.teamAway.score.goal} - ${m.teamHome.score.goal}</div>`
-          + `<div class="obg-football-timeline-incident-message-teams-team">${esc(m.teamAway.name)}</div>`
-          + `</div>`) : '')
-        + `</div>`;
-      return host('message', data.direction, null, '', body);
-    }
-
-    // Per PR #20578 (SBEUJE-4840 "Add filters for Vertical timeline") and the real
-    // football-timeline.model.ts FootballTimelineIncidentType enum: the real filter
-    // chips (VERTICAL_TIMELINE_FILTERS) only cover 3 categories — Goal, Card, Corner —
-    // even though halfTime/secondHalfStart/injuryTime/kickOff/fullTime DO carry a real
-    // `type` value (message/notification/match-start/match-end), just not one of those
-    // 3 filterable categories. So they're only ever visible under "All", same net
-    // effect as this tool's FILTER_TYPE map leaving them unmapped (undefined), even
-    // though — corrected 2026-07-14 — it's not literally true that they have "no type
-    // field at all"; they simply don't belong to a chip-visible category.
-    const FILTER_TYPE = {
-      goal:'goal', ownGoal:'goal',
-      yellowCard:'card', secondYellow:'card', redCard:'card',
-      corner:'corner',
-      substitution:'substitution',
-      varReviewStart:'var', varReviewEnd:'var',
-      penaltyScored:'penalty', penaltyMissed:'penalty', penaltyAwarded:'penalty',
-      kickOff:'match-start',
-      fullTime:'match-end',
-      // halfTime / secondHalfStart / injuryTime intentionally absent from this map —
-      // real type exists (message/notification) but has no matching filter chip, see above.
+    // PR #20664 replaces the old per-component `data` DTO with TimelineItem parents
+    // whose related follow-up statistics are nested in `children`. Empty children are
+    // therefore the real partial state: Goal/Card render title-only, Substitute renders
+    // an empty wrapper, and Review switches itself to the centered full-width layout.
+    const RESULT_TYPE = {
+      kickOff:96, halfTime:97, secondHalfStart:98, fullTime:105, injuryTime:106,
+      goal:107, ownGoal:108, goalScorer:109, goalAssist:110,
+      yellowCard:111, yellowCardPlayer:112, secondYellow:113, secondYellowPlayer:114,
+      redCard:115, redCardPlayer:116, substitution:118, substitutionIn:117, substitutionOut:118,
+      corner:119, penaltyAwarded:120, penaltyScored:121, penaltyMissed:122,
+      varReviewStart:123, varReasonGoal:124, varReviewEnd:135
     };
-    const CHIP_LABELS = { goal:'Goals', card:'Cards', corner:'Corners' };
-    const activeFilterKey = { all:'', goals:'goal', cards:'card', corners:'corner' }[window._tlFilter||'all'] ?? '';
-    // Only chips for categories that actually have at least one matching incident right
-    // now get shown, exactly like the real filtersAvailable computation in the container.
-    const presentCategories = [...new Set(chronological.map(it=>FILTER_TYPE[it.type]).filter(Boolean))]
-      .filter(cat => CHIP_LABELS[cat]);
-    let filterBarHtml = '';
-    if (presentCategories.length) {
-      const chipHtml = (key,label) => {
-        const isSelected = activeFilterKey===key;
-        return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${key===''?'all':(key==='goal'?'goals':key==='card'?'cards':'corners')}')">`
-          + `<span class="genos-typography-body-small ${isSelected?'selected':'not-selected'}">${label}</span></div>`;
-      };
-      filterBarHtml = `<div class="obg-match-timeline-filter-bar-wrapper">${chipHtml('','All')}${presentCategories.map(cat=>chipHtml(cat,CHIP_LABELS[cat])).join('')}</div>`;
+    const TYPE_META = {
+      goal:['goal','Goal','goal'], ownGoal:['goal','Own Goal','ownGoal'],
+      yellowCard:['card','Yellow Card','yellowCard'], secondYellow:['card','2nd Yellow Card','secondYellow'],
+      redCard:['card','Red Card','redCard'], corner:['card','Corner','corner'],
+      substitution:['substitute','Substitution','substitution'],
+      penaltyAwarded:['penalty','Penalty','penaltyAwarded'],
+      penaltyScored:['penalty','Penalty scored','penaltyScored'],
+      penaltyMissed:['penalty','Penalty missed','penaltyMissed'],
+      varReviewStart:['review','VAR review starts','varReviewStart'],
+      varReviewEnd:['review','VAR review ends','varReviewEnd'],
+      kickOff:['notify','Kick Off',''], secondHalfStart:['notify','Start of 2nd half time',''],
+      injuryTime:['notify','Injury Time',''], halfTime:['message','Half Time',''],
+      fullTime:['message','Match ends','']
+    };
+    function derivedChildren(item, parentId, eventPeriodId) {
+      if (Array.isArray(item.children)) return item.children;
+      if (item.partial) return [];
+      const child = (suffix, type, label, resultType, value, iconKey) => ({
+        id:`${parentId}-${suffix}`, relReference:parentId, minute:item.minute||0, second:item.second||0,
+        eventPeriodId, type, team:item.team||'', label:label||'', iconKey:iconKey||'',
+        gameResultTypeId:resultType, gameResultValue:value||label||'', children:[]
+      });
+      if (item.type==='goal'||item.type==='ownGoal') {
+        const children = [];
+        if (item.player) children.push(child('scorer','scorer',item.player,RESULT_TYPE.goalScorer,item.player,''));
+        if (item.assist) children.push(child('assist','assist',item.assist,RESULT_TYPE.goalAssist,item.assist,''));
+        return children;
+      }
+      if (item.type==='yellowCard'||item.type==='secondYellow'||item.type==='redCard'||item.type==='corner') {
+        const childType = item.type==='yellowCard' ? RESULT_TYPE.yellowCardPlayer
+          : item.type==='secondYellow' ? RESULT_TYPE.secondYellowPlayer
+          : item.type==='redCard' ? RESULT_TYPE.redCardPlayer : RESULT_TYPE.corner;
+        return item.player ? [child('player','player',item.player,childType,item.player,'')] : [];
+      }
+      if (item.type==='substitution') {
+        const children = [];
+        if (item.playerOut) children.push(child('out','player',item.playerOut,RESULT_TYPE.substitutionOut,item.playerOut,'ico-substitution-out'));
+        if (item.playerIn) children.push(child('in','player',item.playerIn,RESULT_TYPE.substitutionIn,item.playerIn,'ico-substitution-in'));
+        return children;
+      }
+      if (item.type==='varReviewStart'||item.type==='varReviewEnd') {
+        return item.reason ? [child('reason','reason',item.reason,RESULT_TYPE.varReasonGoal,item.reason,'')] : [];
+      }
+      return [];
     }
-    const visibleItems = activeFilterKey==='' ? chronological : chronological.filter(it => FILTER_TYPE[it.type]===activeFilterKey);
+    function toTimelineItem(item) {
+      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+      const parentId = String(item.reference || item._id);
+      const eventPeriodId = item.eventPeriodId || ((item.minute||0) > PD ? 2 : 1);
+      const meta = TYPE_META[item.type] || ['notify',item.type,''];
+      const resultType = RESULT_TYPE[item.type] || 0;
+      const minute = (item.minute||0) + (item.addedMinute||0);
+      return {
+        id:parentId, relReference:item.relReference, minute, second:item.second||0,
+        eventPeriodId, type:meta[0], team:PHASES.includes(item.type)?'':(item.team||''),
+        label:meta[1], iconKey:meta[2], gameResultTypeId:resultType,
+        gameResultValue:item.type==='injuryTime' ? `${item.extraMinutes||'?'} min added` : (item.player||''),
+        children:derivedChildren(item,parentId,eventPeriodId), qaType:item.type
+      };
+    }
+    function getEventTime(item) {
+      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+      const extra = item.minute - PD;
+      const minuteText = extra > 0 ? `${PD} + ${extra}` : String(item.minute);
+      const secondText = extra <= 0 && item.second ? `:${String(item.second).padStart(2,'0')}` : '';
+      return `${minuteText}${secondText}'`;
+    }
+    function componentFor(item) {
+      const id = item.gameResultTypeId;
+      if ([107,108,109,110,136].includes(id)) return 'goal';
+      if ([111,112,113,114,115,116,119,137,138,139,140].includes(id)) return 'card';
+      if (id>=123 && id<=135) return 'review';
+      if ([117,118,142].includes(id)) return 'substitute';
+      if ([104,120,121,122,141].includes(id)) return 'penalty';
+      if ([97,105].includes(id)) return 'message';
+      return 'notify';
+    }
+    function renderGoalLike(item, direction) {
+      const body = item.children.map(child => child.gameResultTypeId===RESULT_TYPE.goalAssist
+        ? `<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(child.label)})</div>`
+        : `<div class="obg-football-timeline-incident-goal-player">${esc(child.label)}</div>`).join('');
+      return host('goal', direction, item.label, tlIconHtml(item.qaType), body);
+    }
+    function renderCardLike(item, direction) {
+      const body = item.children.map(child=>`<div class="obg-football-timeline-incident-card-player">${esc(child.label)}</div>`).join('');
+      return host('card', direction, item.label, tlIconHtml(item.qaType), body);
+    }
+    function renderPenalty(item, direction) {
+      const body = item.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(item.gameResultValue)}</div>` : '';
+      return host('penalty', direction, item.label, tlIconHtml(item.qaType), body);
+    }
+    function renderSubstitute(item, direction) {
+      const body = `<div class="obg-football-timeline-incident-substitute-wrapper">`
+        + item.children.map(child => {
+          const incoming = child.gameResultTypeId===RESULT_TYPE.substitutionIn;
+          return `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon">${incoming?'↓':'↑'}</span><span class="obg-football-timeline-incident-substitute-item-player ${incoming?'in':'out'}">${esc(child.gameResultValue)}</span></div>`;
+        }).join('') + `</div>`;
+      return host('substitute', direction, item.label, tlIconHtml('substitution'), body);
+    }
+    function renderReview(item, direction) {
+      const reviewDirection = item.children.length ? direction : 'full';
+      const body = reviewDirection==='full'
+        ? `<div class="obg-football-timeline-incident-review-full">${esc(item.label)} - ${esc(item.minute)}'</div>`
+        : item.children.map(child=>`<div class="obg-football-timeline-incident-review-reason">${esc(child.gameResultValue)}</div>`).join('');
+      return host('review', reviewDirection, reviewDirection==='full'?null:item.label, tlIconHtml(item.qaType), body);
+    }
+    function renderNotification(item, direction) {
+      const suffix = item.gameResultTypeId===RESULT_TYPE.injuryTime && item.gameResultValue
+        ? ` - <span class="obg-football-timeline-incident-notify-suffix">${esc(item.gameResultValue)}</span>` : '';
+      const body = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${esc(item.label)}</span>${suffix}</div>`;
+      return host('notify', direction, null, tlIconHtml(item.qaType), body);
+    }
+    function renderMessage(item, direction) {
+      const body = `<div class="obg-football-timeline-incident-message-wrapper">`
+        + (item.label?`<span class="obg-football-timeline-incident-message-title">${esc(item.label)}</span>`:'')
+        + `</div>`;
+      return host('message', direction, null, tlIconHtml(item.qaType), body);
+    }
+
+    // Exact PR #20664 container behavior: filter keys are capitalized Goal/Card/Corner,
+    // while the supplied TimelineItem mock uses lower-case types. That currently leaves
+    // only the always-present All chip visible; the QA port intentionally exposes this
+    // implementation mismatch instead of silently normalizing it.
+    const activeFilterKey = { all:'', goals:'Goal', cards:'Card', corners:'Corner' }[window._tlFilter||'all'] ?? '';
+    const filterOptions = [
+      {key:'',label:'All',mode:'all'},
+      {key:'Goal',label:'Goals',mode:'goals'},
+      {key:'Card',label:'Cards',mode:'cards'},
+      {key:'Corner',label:'Corners',mode:'corners'}
+    ];
+    const timelineTypes = chronological.map(item=>toTimelineItem(item).type);
+    const availableFilters = filterOptions.filter(option=>option.key==='' || timelineTypes.includes(option.key));
+    const chipHtml = option => {
+      const isSelected = activeFilterKey===option.key;
+      return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${option.mode}')">`
+        + `<span class="genos-typography-body-small ${isSelected?'selected':'not-selected'}">${option.label}</span></div>`;
+    };
+    const filterBarHtml = `<div class="obg-match-timeline-filter-bar-wrapper">${availableFilters.map(chipHtml).join('')}</div>`;
+    const visibleItems = activeFilterKey==='' ? chronological : chronological.filter(item=>toTimelineItem(item).type===activeFilterKey);
 
     // Real component lists newest-first (see MOCK_FOOTBALL_TIMELINE_DATA ordering).
     let rows = '';
     for (const item of visibleItems.slice().reverse()) {
-      const isHome = item.team==='home';
-      const direction = PHASES.includes(item.type) || ((item.type==='varReviewStart'||item.type==='varReviewEnd') && !item.team)
-        ? 'full' : (isHome ? 'left' : 'right');
-      const data = toRealData(item, direction);
+      const timelineItem = toTimelineItem(item);
+      const direction = timelineItem.team==='home' ? 'left' : (timelineItem.team==='away' ? 'right' : 'full');
       let markerTime = '';
       if (direction!=='full') {
-        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${data.time}</div></div>`;
+        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${getEventTime(timelineItem)}</div></div>`;
       }
       let incidentHtml = '';
-      // SBEUJE-7223: a "partial" incident hasn't received its completing relReference'd
-      // event yet, so — for the types capable of being partial (goal-family, substitution,
-      // VAR review) — we show only the title + a note instead of the real nested fields.
-      if (item.partial && (GOAL_TYPES.includes(item.type) || item.type==='substitution' || VAR_TYPES.includes(item.type))) {
-        const typeClass = item.type==='substitution' ? 'substitute' : (VAR_TYPES.includes(item.type) ? 'review' : 'goal');
-        incidentHtml = host(typeClass, data.direction, data.title, data.icon, partialNoteHtml());
-      } else {
-        switch (item.type) {
-          case 'goal': case 'ownGoal': incidentHtml = renderGoalLike(data); break;
-          case 'yellowCard': case 'secondYellow': case 'redCard': incidentHtml = renderCardLike(data); break;
-          case 'corner': incidentHtml = renderCardLike(data); break;
-          case 'penaltyScored': case 'penaltyMissed': case 'penaltyAwarded': incidentHtml = renderPenalty(data); break;
-          case 'substitution': incidentHtml = renderSubstitute(data); break;
-          case 'varReviewStart': case 'varReviewEnd': incidentHtml = renderReview(data); break;
-          case 'kickOff': case 'secondHalfStart': case 'injuryTime': incidentHtml = renderNotification(data); break;
-          case 'halfTime': case 'fullTime': incidentHtml = renderMessage(data); break;
-          default: incidentHtml = '';
-        }
+      switch (componentFor(timelineItem)) {
+        case 'goal': incidentHtml = renderGoalLike(timelineItem,direction); break;
+        case 'card': incidentHtml = renderCardLike(timelineItem,direction); break;
+        case 'penalty': incidentHtml = renderPenalty(timelineItem,direction); break;
+        case 'substitute': incidentHtml = renderSubstitute(timelineItem,direction); break;
+        case 'review': incidentHtml = renderReview(timelineItem,direction); break;
+        case 'message': incidentHtml = renderMessage(timelineItem,direction); break;
+        default: incidentHtml = renderNotification(timelineItem,direction);
       }
       if (!incidentHtml) continue;
       rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
@@ -583,7 +560,7 @@
     const horizontalHtml = horizontalTimelineHtml(chronological, PD);
     const horizontalWrapperHtml = horizontalHtml ? `<div class="obg-match-timeline-horizontal-wrapper">${horizontalHtml}</div>` : '';
     p.innerHTML = `<div class="obg-match-timeline-wrapper">${horizontalWrapperHtml}${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
-      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Ported from the real, merged vertical-timeline component (libs/betting/match-timeline), the now-also-default-branch horizontal timeline (SBEUJE-6553), and the still-open filter-bar PR #20578 (SBEUJE-4840). Real backend/NgRx data wiring is not yet shipped upstream (container still hardcodes mock data) — this view is driven entirely by manually injected test incidents.</div>`;
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Vertical timeline markup and partial-update behavior are ported from draft PR #20664 (SBEUJE-7223); horizontal timeline and filters come from their merged implementations. The real container still hardcodes mock data, so this QA view uses manually injected TimelineItem parents and relReference-linked children.</div>`;
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -814,10 +791,9 @@
           const isHome=item.team==='home';
           const icon=`<div class="tl-icon">${iconHtml(item.type)}</div>`;
           let body=`<div class="tl-inc-label">${LABEL[item.type]||item.type}</div>`;
-          // SBEUJE-7223: a "partial" incident has only its title so far — the completing
-          // relReference'd event (IN/OUT names, scorer/assist, VAR reason) hasn't arrived
-          // yet, so we deliberately render nothing below the title, plus a tag noting it.
-          if(item.partial){body+=`<div class="tl-inc-partial-note">🧩 awaiting completion (SBEUJE-7223)</div>`;}
+          // PR #20664 renders an empty children array as title-only; no synthetic
+          // "awaiting completion" message exists in the product component.
+          if(item.partial){}
           else if(item.type==='substitution'){
             // Fixed 2026-07-14: real substitute.component.html renders OUT first (icon
             // class "out", arrow ↑) then IN second (icon class "in", arrow ↓) — this
@@ -863,14 +839,10 @@
 })();/**
  * Timeline QA Tool v2 — Injectable bookmarklet (mode toggle edition)
  * Two modes:
- *  - Data only: renders using our PORTED real vertical-timeline component markup/CSS
- *    (1:1 from the merged, shipped libs/betting/match-timeline/src/vertical-timeline
- *    code — see renderReal()/`_tqInjectRealStyles` above) — real class names, real emoji
- *    icons, real per-type component structure. Not the invented Figma mock below.
- *    Also includes a ported filter bar (All/Goals/Cards/Corners) from the still-open
- *    PR #20578 (SBEUJE-4840, Code Review as of this port) — including its confirmed
- *    real quirk where halfTime/secondHalfStart/injuryTime bands (no `type` field in the
- *    real data model) disappear under any specific filter, not just under "All".
+ *  - Data only: renders using the ported vertical-timeline markup/CSS updated to draft
+ *    PR #20664 (SBEUJE-7223), including TimelineItem parents, relReference-linked children,
+ *    gameResultTypeId component dispatch, and empty-children partial rendering.
+ *    It also includes the merged filter bar from PR #20578 (SBEUJE-4840).
  *  - Demo:      our OWN invented mock tab+panel+CSS (horizontal bar + styled list) —
  *    a Figma-based visual preview only, useful for comparison, NOT real developer code.
  *
@@ -931,7 +903,7 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.61';
+  const TL_TOOL_VERSION = 'v0.1.62';
   window._tlToolVersion = TL_TOOL_VERSION;
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
@@ -1229,7 +1201,8 @@
           </div>
 
           <div class="tl-qa-row" id="tl-row-base">
-            <input class="tl-qa-input" type="number" id="tl-min" placeholder="Min" value="45" min="1" max="120">
+            <input class="tl-qa-input" type="number" id="tl-min" placeholder="Min" value="45" min="0" max="120">
+            <input class="tl-qa-input" type="number" id="tl-sec" placeholder="Sec" value="0" min="0" max="59" style="width:52px;flex:none">
             <input class="tl-qa-input" type="text" id="tl-player" placeholder="Player name">
             <!-- Injury Time only: per the real Opta feed, the "InjuryTimeAnnouncement"
                  event is always emitted right at a half's natural end (e.g. ~89:30 in
@@ -1270,12 +1243,11 @@
             <input class="tl-qa-input" type="number" id="tl-extra" placeholder="+min" style="width:60px;flex:none">
           </div>
 
-          <!-- SBEUJE-7223: Substitute/Goal/VAR incidents can now arrive from BE as a
-               "partial" event (Title only — no IN/OUT/scorer/reason details yet), later
-               completed by a second BE event linked via relReference. Only shown for the
-               incident types the ticket calls out (substitution + goal types + VAR types). -->
+          <!-- PR #20664: detail-bearing incidents are TimelineItem parents. A partial
+               update is represented by an empty children array; follow-up items linked
+               by relReference later become children of the same parent. -->
           <div class="tl-qa-row" id="tl-row-partial" style="display:none">
-            <label class="tl-qa-checkbox-label"><input type="checkbox" id="tl-partial-chk"> 🧩 Partial (title only — per SBEUJE-7223)</label>
+            <label class="tl-qa-checkbox-label"><input type="checkbox" id="tl-partial-chk"> 🧩 Parent only (empty children — PR #20664)</label>
           </div>
 
           <button class="tl-qa-btn green" id="tl-add-btn" style="width:100%">＋ Add Incident</button>
@@ -1369,6 +1341,53 @@
   // no live-update path for yellow cards/corners/subs/VAR/penalty-awarded/missed,
   // so those intentionally do not sync (same limitation as the Sportsbook Tool).
   const GOAL_TYPES = ['goal', 'ownGoal', 'penaltyScored'];
+  const CARD_DETAIL_TYPES = ['yellowCard', 'secondYellow', 'redCard', 'corner'];
+  const CHILD_DETAIL_TYPES = [...GOAL_TYPES.filter(type => type !== 'penaltyScored'), ...CARD_DETAIL_TYPES, 'substitution', 'varReviewStart', 'varReviewEnd'];
+  const PR_RESULT_TYPE = {
+    goalScorer: 109, goalAssist: 110, yellowCardPlayer: 112, secondYellowPlayer: 114,
+    redCardPlayer: 116, substitutionIn: 117, substitutionOut: 118, corner: 119,
+    varReasonGoal: 124
+  };
+  function buildPrChildren(incident) {
+    const parentId = String(incident.reference || incident._id);
+    const eventPeriodId = incident.eventPeriodId || 1;
+    const child = (suffix, type, label, gameResultTypeId, iconKey) => ({
+      id: `${parentId}-${suffix}`,
+      relReference: parentId,
+      minute: incident.minute || 0,
+      second: incident.second || 0,
+      eventPeriodId,
+      type,
+      team: incident.team || '',
+      label: label || '',
+      iconKey: iconKey || '',
+      gameResultTypeId,
+      gameResultValue: label || '',
+      children: []
+    });
+    if (incident.type === 'goal' || incident.type === 'ownGoal') {
+      const children = [];
+      if (incident.player) children.push(child('scorer', 'scorer', incident.player, PR_RESULT_TYPE.goalScorer));
+      if (incident.assist) children.push(child('assist', 'assist', incident.assist, PR_RESULT_TYPE.goalAssist));
+      return children;
+    }
+    if (CARD_DETAIL_TYPES.includes(incident.type)) {
+      const resultType = incident.type === 'yellowCard' ? PR_RESULT_TYPE.yellowCardPlayer
+        : incident.type === 'secondYellow' ? PR_RESULT_TYPE.secondYellowPlayer
+        : incident.type === 'redCard' ? PR_RESULT_TYPE.redCardPlayer : PR_RESULT_TYPE.corner;
+      return incident.player ? [child('player', 'player', incident.player, resultType)] : [];
+    }
+    if (incident.type === 'substitution') {
+      const children = [];
+      if (incident.playerOut) children.push(child('out', 'player', incident.playerOut, PR_RESULT_TYPE.substitutionOut, 'ico-substitution-out'));
+      if (incident.playerIn) children.push(child('in', 'player', incident.playerIn, PR_RESULT_TYPE.substitutionIn, 'ico-substitution-in'));
+      return children;
+    }
+    if (VAR_TYPES.includes(incident.type)) {
+      return incident.reason ? [child('reason', 'reason', incident.reason, PR_RESULT_TYPE.varReasonGoal)] : [];
+    }
+    return [];
+  }
   const PHASE_SYNC_LABELS = { kickOff: 'Kick off', halfTime: 'Half time', secondHalfStart: '2nd half', fullTime: 'Match ends' };
   function getEventIdFromPage() {
     const params = new URLSearchParams(location.search);
@@ -1389,7 +1408,7 @@
   // addedMinute (stoppage time practically never exceeds ~15') while staying under the
   // next whole minute.
   function sortKey(it) {
-    const base = (it.minute || 0) + (it.addedMinute || 0) / 100;
+    const base = (it.minute || 0) + (it.addedMinute || 0) / 100 + (it.second || 0) / 6000;
     const closesHalf = it.type === 'halfTime' || it.type === 'secondHalfStart' || it.type === 'fullTime';
     return base + (closesHalf ? 0.5 : 0);
   }
@@ -1557,11 +1576,8 @@
         ? `<button class="tl-qa-inc-restore" data-id="${item._id}" title="Restore (undo VAR cancellation)">↺</button>`
         : `<button class="tl-qa-inc-cancel" data-id="${item._id}" title="Cancel via VAR (SBOF-9514/9513)">⊘</button>`;
       const cancelledTag = cancelled ? ' <span class="tl-qa-inc-cancelled-tag">cancelled</span>' : '';
-      // SBEUJE-7223: a "partial" (title-only) incident still awaits its completing
-      // relReference'd event — surface a tag + explicit "Complete" action so testers
-      // can simulate that second event arriving, instead of just editing in place.
-      const partialTag = item.partial ? ' <span class="tl-qa-inc-partial-tag">partial</span>' : '';
-      const completeBtn = item.partial ? `<button class="tl-qa-inc-complete" data-id="${item._id}" title="Complete this partial incident (simulate the relReference'd follow-up event)">🧩→✓</button>` : '';
+      const partialTag = item.partial ? ' <span class="tl-qa-inc-partial-tag">empty children</span>' : '';
+      const completeBtn = item.partial ? `<button class="tl-qa-inc-complete" data-id="${item._id}" title="Attach relReference-linked child items to this parent">🧩→✓</button>` : '';
       return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}${cancelledTag}${partialTag}</span>${completeBtn}${cancelBtn}<button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
     }).join('');
   }
@@ -1614,7 +1630,7 @@
     $('tl-mode-demo').classList.toggle('active', isDemo);
     $('tl-qa-mode-desc').textContent = isDemo
       ? 'Full mock tab+CSS injected — shows how Timeline should look (our own Figma-based preview)'
-      : 'Real ported vertical-timeline component (1:1 from the merged libs/betting/match-timeline code) — vertical only, no real backend data wiring exists yet upstream';
+      : 'Real vertical-timeline port updated to draft PR #20664 — TimelineItem parent/children partial updates; data wiring is still simulated by this QA tool';
     $('tl-inject-btn').textContent = window._tlInjected
       ? (isDemo ? '✓ Demo injected' : '✓ Data ready')
       : (isDemo ? 'Inject Demo Tab' : 'Inject Data Mode');
@@ -1651,7 +1667,9 @@
     const t = $('tl-type').value;
     const team = $('tl-team').value || 'home';
     if (PHASES.includes(t)) return;
-    if (t === 'substitution') {
+    if (VAR_TYPES.includes(t)) {
+      $('tl-player').value = 'Goal';
+    } else if (t === 'substitution') {
       const out = nextPlayerName(team);
       $('tl-pout').value = out;
       $('tl-pin').value  = nextPlayerName(team, out);
@@ -1730,11 +1748,10 @@
     // Regular incidents during stoppage time (e.g. a corner at 45+2') need their own
     // addedMinute field — everything except phase bands can occur during added time.
     $('tl-added').style.display        = isPhase ? 'none' : '';
-    // SBEUJE-7223: partial (title-only) submission is only meaningful for the incident
-    // types the ticket names — substitute, goal-family and VAR — since those are the
-    // ones the real BE now streams in two steps (parent event, then a relReference'd
-    // completion event with the IN/OUT/scorer/reason details).
-    const isPartialCapable = isSub || isScore || isVar;
+    $('tl-player').placeholder = isVar ? 'VAR reason' : 'Player name';
+    // PR #20664 represents partial detail-bearing incidents with an empty children array.
+    // The same parent/child contract now drives goals, cards/corners, substitutions and VAR.
+    const isPartialCapable = CHILD_DETAIL_TYPES.includes(t);
     $('tl-row-partial').style.display = (isPartialCapable && !window._tlCompletingId) ? 'flex' : 'none';
     if (!isPartialCapable) $('tl-partial-chk').checked = false;
     if (isInjuryTime) updateInjuryHalfMinute();
@@ -2436,25 +2453,26 @@
     if (!window._tlInjected) { tlStatus('Inject the tab first!', true); return; }
     const type = $('tl-type').value;
     const PHASES = ['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
-    // SBEUJE-7223: while "completing" a previously-injected partial incident, this same
-    // button instead merges the now-available details into the ORIGINAL incident object
-    // and marks it as completed (relReference set to its own reference, simulating the
-    // real BE's second, relReference'd event) — it must not create a brand new incident.
+    // PR #20664 keeps the original parent and renders related follow-up statistics as
+    // TimelineItem children. Completing attaches those children instead of replacing
+    // the parent or creating another top-level timeline row.
     if (window._tlCompletingId) {
       const inc = (window._tlIncidents || []).find(it => String(it._id) === String(window._tlCompletingId));
       if (!inc) { tlCancelCompleteIncident(); tlStatus('Incident to complete no longer exists', true); return; }
       if (inc.type === 'substitution') {
         inc.playerOut = $('tl-pout').value.trim() || undefined;
         inc.playerIn  = $('tl-pin').value.trim()  || undefined;
+      } else if (VAR_TYPES.includes(inc.type)) {
+        inc.reason = $('tl-player').value.trim() || undefined;
       } else {
         inc.player = $('tl-player').value.trim() || undefined;
         if (GOAL_TYPES.includes(inc.type)) inc.assist = $('tl-assist').value.trim() || undefined;
       }
-      inc.relReference = inc.reference;
+      inc.children = buildPrChildren(inc);
       delete inc.partial;
       recomputeAllScores();
       window.tlRender();
-      tlStatus(`Completed partial incident: ${inc.type} ${inc.minute}' (relReference → ${inc.reference})`);
+      tlStatus(`Attached ${inc.children.length} child item(s) to ${inc.type} ${inc.minute}' (relReference → ${inc.reference})`);
       renderIncidentList();
       syncToMatchTab(inc);
       tlCancelCompleteIncident();
@@ -2477,17 +2495,17 @@
       const parsedMin = parseInt($('tl-min').value, 10);
       incident.minute = Number.isNaN(parsedMin) ? (PHASES.includes(type) ? phaseDefaultMinute(type) : undefined) : parsedMin;
     }
-    // SBEUJE-7223: substitute/goal/VAR incidents can be injected as "partial" (title
-    // only) — the real BE contract has them arrive as two events (a Parent carrying its
-    // own `reference`, and a later completing event carrying the same value in
-    // `relReference`). We simulate the Parent here and skip the detail fields entirely
-    // (rather than saving blank strings), so the render layer can tell "not yet known"
-    // apart from "known to be empty".
-    const isPartialCapable = type === 'substitution' || GOAL_TYPES.includes(type) || VAR_TYPES.includes(type);
+    incident.second = Math.max(0, Math.min(59, parseInt($('tl-sec').value, 10) || 0));
+    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+    incident.eventPeriodId = incident.minute > PD ? 2 : 1;
+    // A partial PR #20664 parent has no children yet. The completing action later
+    // attaches child TimelineItems carrying relReference back to this parent id.
+    const isPartialCapable = CHILD_DETAIL_TYPES.includes(type);
     const isPartial = isPartialCapable && $('tl-partial-chk').checked;
     if (isPartial) {
       incident.partial = true;
       incident.reference = String(incident._id);
+      incident.children = [];
     } else if (type === 'substitution') {
       incident.playerOut = $('tl-pout').value.trim() || undefined;
       incident.playerIn  = $('tl-pin').value.trim()  || undefined;
@@ -2495,7 +2513,8 @@
       incident.scoreText    = $('tl-scoretext').value.trim() || undefined;
       incident.extraMinutes = parseInt($('tl-extra').value) || undefined;
     } else {
-      incident.player = $('tl-player').value.trim() || undefined;
+      if (VAR_TYPES.includes(type)) incident.reason = $('tl-player').value.trim() || undefined;
+      else incident.player = $('tl-player').value.trim() || undefined;
       if (GOAL_TYPES.includes(type)) {
         incident.assist = $('tl-assist').value.trim() || undefined;
         // .score is auto-computed by recomputeAllScores() right after chronological
@@ -2511,6 +2530,10 @@
     if (!PHASES.includes(type)) {
       incident.addedMinute = parseInt($('tl-added').value, 10) || undefined;
     }
+    if (isPartialCapable && !isPartial) {
+      incident.reference = String(incident._id);
+      incident.children = buildPrChildren(incident);
+    }
     if (!window._tlIncidents) window._tlIncidents = [];
     insertChronological(window._tlIncidents, incident);
     recomputeAllScores();
@@ -2521,6 +2544,7 @@
     syncToMatchTab(incident);
     // Clear transient fields, then re-fill with fresh auto-suggested names for next add
     ['tl-player','tl-assist','tl-score','tl-pout','tl-pin','tl-scoretext','tl-added','tl-extra'].forEach(id => { const el = $(id); if(el) el.value=''; });
+    $('tl-sec').value = '0';
     $('tl-partial-chk').checked = false;
     updateScorePreview();
     updatePlayerNames();
@@ -2535,9 +2559,11 @@
     $('tl-type').value = inc.type;
     $('tl-type').disabled = true;
     updateRows();
-    $('tl-team').value = inc.team || 'home';
+    $('tl-team').value = VAR_TYPES.includes(inc.type) ? inc.team : (inc.team || 'home');
     $('tl-team').disabled = true;
     if (inc.type !== 'injuryTime') { $('tl-min').value = inc.minute; $('tl-min').disabled = true; }
+    $('tl-sec').value = inc.second || 0;
+    $('tl-sec').disabled = true;
     ['tl-player','tl-assist','tl-pout','tl-pin'].forEach(id2 => { const el = $(id2); if (el) el.value = ''; });
     $('tl-add-btn').textContent = `✓ Complete Incident (${inc.type} ${inc.minute || ''}')`;
     $('tl-add-btn').classList.add('tl-completing');
@@ -2549,6 +2575,7 @@
     $('tl-type').disabled = false;
     $('tl-team').disabled = false;
     $('tl-min').disabled = false;
+    $('tl-sec').disabled = false;
     $('tl-add-btn').textContent = '＋ Add Incident';
     $('tl-add-btn').classList.remove('tl-completing');
     $('tl-cancel-complete-btn').style.display = 'none';
