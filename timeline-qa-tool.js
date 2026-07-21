@@ -33,6 +33,8 @@
     corner: c=>`<svg viewBox="0 0 16 16"><path fill="${c}" d="M6.3916 2.18891L12.7495 5.25513L6.3916 8.32257V14.5245H5.33331V1.33337H6.3916V2.18891Z"/></svg>`,
     // substitution.svg — solid up/down arrow shapes (not stroked lines).
     substitution: ()=>`<svg viewBox="0 0 16 16"><path fill="${TL_GREEN}" d="M8.51159 5.35764C8.05606 5.35764 7.83339 4.78427 8.14719 4.4551L10.9713 1.49265C11.1737 1.28028 11.4875 1.28028 11.69 1.49265L14.5141 4.4551C14.838 4.78427 14.6153 5.35764 14.1598 5.35764H12.3479V9.60491C12.3479 10.1889 11.8924 10.6667 11.3357 10.6667C10.779 10.6667 10.3235 10.1889 10.3235 9.60491V5.35764H8.51159Z"/><path fill="${TL_RED}" d="M7.48772 10.6424C7.94325 10.6424 8.16592 11.2158 7.85212 11.545L5.02802 14.5074C4.82557 14.7198 4.51179 14.7198 4.30934 14.5074L1.48524 11.545C1.16132 11.2158 1.38402 10.6424 1.83952 10.6424H3.6514V6.3952C3.6514 5.81119 4.10689 5.33338 4.66362 5.33338C5.22034 5.33338 5.67585 5.81119 5.67585 6.3952V10.6424H7.48772Z"/></svg>`,
+    substitutionOut: ()=>`<svg viewBox="0 0 16 16"><path fill="${TL_RED}" d="M8.51159 5.35764C8.05606 5.35764 7.83339 4.78427 8.14719 4.4551L10.9713 1.49265C11.1737 1.28028 11.4875 1.28028 11.69 1.49265L14.5141 4.4551C14.838 4.78427 14.6153 5.35764 14.1598 5.35764H12.3479V9.60491C12.3479 10.1889 11.8924 10.6667 11.3357 10.6667C10.779 10.6667 10.3235 10.1889 10.3235 9.60491V5.35764H8.51159Z"/></svg>`,
+    substitutionIn: ()=>`<svg viewBox="0 0 16 16"><path fill="${TL_GREEN}" d="M7.48772 10.6424C7.94325 10.6424 8.16592 11.2158 7.85212 11.545L5.02802 14.5074C4.82557 14.7198 4.51179 14.7198 4.30934 14.5074L1.48524 11.545C1.16132 11.2158 1.38402 10.6424 1.83952 10.6424H3.6514V6.3952C3.6514 5.81119 4.10689 5.33338 4.66362 5.33338C5.22034 5.33338 5.67585 5.81119 5.67585 6.3952V10.6424H7.48772Z"/></svg>`,
     // penaltyscored.svg — camera glyph (lens) PLUS the same outer frame path as penaltyMissed,
     // just colored to match (grey), so both variants share identical visual size/weight.
     penaltyScored: c=>`<svg viewBox="0 0 16 16"><path fill="#fff" d="M6.77998 6.68357C6.42998 6.84691 6.11661 7.07357 5.85998 7.35357L5.82748 8.40607L6.72998 8.70024L7.75665 7.95357L7.79331 7.93024V6.97894L6.77998 6.68357ZM6.98995 10.3069L6.61331 9.14357L6.59665 9.10024L5.72071 8.8126L5.10332 9.6769C5.14998 10.0669 5.26998 10.4336 5.45331 10.7602L6.49868 11.0479L7.00665 10.3502L6.98995 10.3069ZM9.22328 6.68357L8.20661 6.97217V7.9302L8.24328 7.95354L9.23661 8.67354L9.27328 8.7002L10.1433 8.41454V7.35357C9.88328 7.07357 9.56994 6.84691 9.22328 6.68357ZM10.2728 8.81887L9.39998 9.0969L9.38664 9.14024L9.00664 10.3036L8.99331 10.3469L9.51254 11.0601L10.5466 10.7569C10.73 10.4302 10.8533 10.0669 10.9 9.6769L10.2728 8.81887ZM8.65661 10.5936H7.34331L6.82121 11.3106L7.43331 12.1969C7.61665 12.2336 7.80664 12.2502 7.99998 12.2502C8.19664 12.2502 8.38664 12.2336 8.56998 12.1969V12.1936L9.16921 11.2975L8.65661 10.5936Z"/><path fill="${c}" d="M8.56481 6.04652C6.28465 5.67152 4.33818 7.61798 4.71318 9.89815C4.94028 11.2791 6.05412 12.393 7.43515 12.6201C9.71534 12.9951 11.6618 11.0487 11.2868 8.76848C11.0597 7.38748 9.94584 6.27365 8.56481 6.04652ZM8.20661 6.97217L9.22328 6.68357C9.56994 6.84691 9.88328 7.07357 10.1433 7.35357V8.41454L9.27328 8.7002L9.23661 8.67354L8.24328 7.95354L8.20661 7.9302V6.97217ZM6.77998 6.68357L7.79331 6.97894V7.93024L7.75665 7.95357L6.72998 8.70024L5.82748 8.40607L5.85998 7.35357C6.11661 7.07357 6.42998 6.84691 6.77998 6.68357ZM6.49868 11.0479L5.45331 10.7602C5.26998 10.4336 5.14998 10.0669 5.10332 9.6769L5.72071 8.8126L6.59665 9.10024L6.61331 9.14357L6.98995 10.3069L7.00665 10.3502L6.49868 11.0479ZM8.56998 12.1936V12.1969C8.38664 12.2336 8.19664 12.2502 7.99998 12.2502C7.80664 12.2502 7.61665 12.2336 7.43331 12.1969L6.82121 11.3106L7.34331 10.5936H8.65661L9.16921 11.2975L8.56998 12.1936ZM9.51254 11.0601L8.99331 10.3469L9.00664 10.3036L9.38664 9.14024L9.39998 9.0969L10.2728 8.81887L10.9 9.6769C10.8533 10.0669 10.73 10.4302 10.5466 10.7569L9.51254 11.0601Z"/><path fill="${c}" d="M3.33331 4.66665C2.96458 4.66665 2.66665 4.96458 2.66665 5.33331V12C2.66665 12.3687 2.36871 12.6666 1.99998 12.6666C1.63125 12.6666 1.33331 12.3687 1.33331 12V5.33331C1.33331 4.22918 2.22918 3.33331 3.33331 3.33331H12.6666C13.7708 3.33331 14.6666 4.22918 14.6666 5.33331V12C14.6666 12.3687 14.3687 12.6666 14 12.6666C13.6312 12.6666 13.3333 12.3687 13.3333 12V5.33331C13.3333 4.96458 13.0354 4.66665 12.6666 4.66665H3.33331Z"/></svg>`,
@@ -47,6 +49,11 @@
   };
   const TL_ICON_COLOR = {goal:TL_GREY,ownGoal:TL_RED,yellowCard:TL_ORANGE,secondYellow:null,redCard:TL_RED,corner:TL_RED,substitution:null,penaltyScored:TL_GREY,penaltyMissed:null,penaltyAwarded:TL_GREY,varReviewStart:TL_GREY,varReviewEnd:TL_GREY,injuryTime:TL_RED,kickOff:TL_GREY};
   const tlIconHtml = t => TL_ICON_SVG[t] ? TL_ICON_SVG[t](TL_ICON_COLOR[t]) : '';
+  const tlSubstitutionChildIconHtml = iconKey => iconKey === 'ico-substitution-out'
+    ? TL_ICON_SVG.substitutionOut()
+    : iconKey === 'ico-substitution-in'
+      ? TL_ICON_SVG.substitutionIn()
+      : tlIconHtml('substitution');
 
   // ── Demo CSS ───────────────────────────────────────────────────────────
   window._tqInjectDemoStyles = function() {
@@ -65,8 +72,8 @@
       .obg-match-timeline-filter-bar-chip{cursor:pointer;display:inline-flex;align-items:center;padding:4px 14px;border-radius:999px;font-family:'DM Sans',sans-serif}
       .obg-match-timeline-filter-bar-chip[data-tl-selected="true"]{background:var(--genos-color-brand-primary,#ff6600)}
       .obg-match-timeline-filter-bar-chip[data-tl-selected="false"].bordered{border:var(--genos-border-s,1px) solid var(--genos-color-neutral-6,#c4c6cc);background:transparent}
-      .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
-      .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="true"] .obg-match-timeline-filter-bar-chip-label,.obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="false"] .obg-match-timeline-filter-bar-chip-label,.obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
       .tl-hbar-wrap{padding:48px 16px 48px}
       .tl-hbar-track{position:relative;height:4px;border-radius:2px;background:#e2e3e8}
       .tl-hbar-progress{position:absolute;top:0;height:100%;background:#40b840;border-radius:2px}
@@ -191,8 +198,8 @@
       .obg-match-timeline-filter-bar-chip{cursor:pointer;display:inline-flex;align-items:center;padding:4px 14px;border-radius:999px;font-family:'DM Sans',sans-serif}
       .obg-match-timeline-filter-bar-chip[data-tl-selected="true"]{background:var(--genos-color-brand-primary,#ff6600)}
       .obg-match-timeline-filter-bar-chip[data-tl-selected="false"].bordered{border:var(--genos-border-s,1px) solid var(--genos-color-neutral-6,#c4c6cc);background:transparent}
-      .obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
-      .obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="true"] .obg-match-timeline-filter-bar-chip-label,.obg-match-timeline-filter-bar-chip .selected{color:#fff;font-weight:600}
+      .obg-match-timeline-filter-bar-chip[data-tl-selected="false"] .obg-match-timeline-filter-bar-chip-label,.obg-match-timeline-filter-bar-chip .not-selected{color:var(--genos-text-color-md,rgba(4,4,6,.7))}
 
       /* Horizontal timeline — ported from PR #20504 (SBEUJE-6553); per audit 2026-07-14
          the horizontal-timeline source tree is now ALSO present on the default branch
@@ -249,6 +256,14 @@
   // per half) with an <obg-badge type="state" typeColor="open"> separator between them
   // once the 2nd half has started, matching the real container's
   // `showHorizontalTimeline` + `horizontalTimelineSections` composition.
+  //
+  // Daily-sync note (2026-07-20, reviewed PR #20644 / SBEUJE-7296): the new SDK mapper
+  // `mapTimelineItemsToHorizontalSections()` groups TimelineItem[] by eventPeriodId first,
+  // then by minute within each period, normalizes later periods by subtracting 45-minute
+  // offsets, and expands each section's totalMinutes to max(45, lastMinuteInPeriod). The
+  // real container still does NOT wire that mapper yet, so this QA tool intentionally keeps
+  // its existing synthetic horizontal rendering for now; revisit here when the container
+  // switches from mock sections to real timelineItems + matchClock.
   function horizontalTimelineHtml(chronological, PD) {
     const HDOT_TYPES = { goal:1, ownGoal:1, yellowCard:1, secondYellow:1, redCard:1 };
     const hItems = chronological.filter(it => HDOT_TYPES[it.type] && (it.addedMinute||0) === 0);
@@ -304,20 +319,14 @@
   }
 
   // ── tlRender: real ported markup (used by "Data only" mode) ─────────────
-  // Port of the Angular vertical-timeline component tree, updated to draft PR #20664
-  // (VerticalTimelineComponent + the 7 football-incidents/* sub-components: card,
-  // goal, message, notification, penalty, review, substitute). Unlike renderMock (our
-  // own invented Figma-based preview used by "Demo" mode), this function reproduces the
-  // real DOM structure/class names AND real icon glyphs (TL_ICON_SVG, shared with the
-  // Demo-mode horizontal bar — see top of file) exactly, so it stays true to what
-  // developers actually built. Known gaps vs. the real product (called out, not hidden):
-  //  - No dedicated real component exists yet for "corner" incidents — we fall back to
-  //    the generic notification markup with the real corner-flag icon as a clearly-
-  //    approximate stand-in (right component, generic wrapper).
-  //  - "2nd yellow card" reuses the real generic card component (it takes `icon` as a
-  //    plain input, no dedicated component exists for this variant either).
-  //  - Horizontal timeline is also ported (see horizontalTimelineHtml below).
-  //    Per SBEUJE-6150 AC it only ever shows goal/card markers (no corners/subs/VAR/pens).
+  // Port of the Angular vertical-timeline component tree, updated through PR #20664
+  // head adbef97a7084a21ded02b72846dd4066e586ebe3 (VerticalTimelineComponent + the 7
+  // football-incidents/* sub-components: card, goal, message, notification, penalty,
+  // review, substitute). Unlike renderMock (our own invented Figma-based preview used by
+  // "Demo" mode), this function reproduces the real DOM structure/class names and the
+  // current TimelineItem-based behavior as closely as possible in plain JS. Horizontal
+  // timeline is still the QA tool's own synthetic renderer (see horizontalTimelineHtml
+  // above), because the real container has not wired the new mapper yet.
   //  - Icons: real icons (`ico-goal` etc.) load from the site's own NgRx icon store at
   //    runtime via ImageIconDirective — no bundled SVG/icon-library PR was found for
   //    CPD-4353/SBEUJE-6152. However, we DO have real, pixel-identical icon SVGs already
@@ -327,44 +336,228 @@
   //    real dev-proof screenshots even though the DOM/CSS was already faithfully ported.
   //    Fixed 2026-07-08: renderReal and horizontalTimelineHtml now both use TL_ICON_SVG.
   function renderReal(p) {
-    const items = (window._tlIncidents||[]).filter(i=>i.status!=='cancelled');
-    const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+    const rawItems = (window._tlIncidents||[]).filter(i=>i.status!=='cancelled');
     const home = window._tlHomeTeam||'Home', away = window._tlAwayTeam||'Away';
     const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
+    const GAME_DURATIONS = { 1: PD, 2: PD };
+    const REVIEW_REASON_IDS = new Set([124,125,126,127,128,129,130,131,132,133,134]);
+    const GOAL_RESULT_IDS = new Set([107,108,109,110,136]);
+    const CARD_RESULT_IDS = new Set([111,112,113,114,115,116,137,138,139]);
+    const CORNER_RESULT_IDS = new Set([119,140]);
+    const REVIEW_RESULT_IDS = new Set([123,124,125,126,127,128,129,130,131,132,133,134,135]);
+    const SUBSTITUTE_RESULT_IDS = new Set([117,118,142]);
+    const PENALTY_RESULT_IDS = new Set([104,120,121,122,141]);
+    const MESSAGE_RESULT_IDS = new Set([97,105]);
+    const NOTIFY_RESULT_IDS = new Set([96,98,99,100,101,102,103,106]);
+    const CHILD_RESULT_IDS = new Set([109,110,112,114,116,117,118,124,125,126,127,128,129,130,131,132,133,134]);
+    const PHASES=['kickOff','halfTime','secondHalfStart','fullTime','injuryTime'];
+    const RESULT_TYPE = {
+      kickOff:96, halfTime:97, secondHalfStart:98, fullTime:105, injuryTime:106,
+      goal:107, ownGoal:108, goalScorer:109, goalAssist:110,
+      yellowCard:111, yellowCardPlayer:112, secondYellow:113, secondYellowPlayer:114,
+      redCard:115, redCardPlayer:116, substitution:118, substitutionIn:117, substitutionOut:118, corner:119,
+      penaltyAwarded:120, penaltyScored:121, penaltyMissed:122, varReviewStart:123,
+      varReasonGoal:124, varReasonPenalty:125, varReasonCards:126, varReasonPenaltyNotAwarded:127,
+      varReasonRedCardUpgrade:128, varReasonMistakenIdentity:129, varReasonOther:130,
+      varReasonGoalNotAwarded:131, varReasonRefereeDecisionConfirmed:132,
+      varReasonRefereeDecisionCancelled:133, varReasonRedCardGiven:134, varReviewEnd:135,
+      cancelGoal:136, cancelYellowCard:137, cancelRedCard:138, cancelSecondYellow:139,
+      cancelCorner:140, cancelPenalty:141, cancelSubstitution:142
+    };
+    const TYPE_META = {
+      goal:['Goal','Goal','goal'], ownGoal:['Goal','Own Goal','ownGoal'],
+      yellowCard:['Card','Yellow Card','yellowCard'], secondYellow:['Card','2nd Yellow Card','secondYellow'],
+      redCard:['Card','Red Card','redCard'], corner:['Corner','Corner','corner'],
+      substitution:['Substitution','Substitution','substitution'],
+      penaltyAwarded:['Penalty','Penalty','penaltyAwarded'],
+      penaltyScored:['Penalty','Penalty scored','penaltyScored'],
+      penaltyMissed:['Penalty','Penalty missed','penaltyMissed'],
+      varReviewStart:['Review','VAR review starts','varReviewStart'],
+      varReviewEnd:['Review','VAR review ends','varReviewEnd'],
+      kickOff:['','Kick Off','kickOff'], secondHalfStart:['','Start of 2nd half time','kickOff'],
+      injuryTime:['','Injury Time','injuryTime'], halfTime:['','Half Time',''], fullTime:['','Match ends','']
+    };
+    const CHILD_TYPE_RESULT = {
+      scorer: RESULT_TYPE.goalScorer, goalScorer: RESULT_TYPE.goalScorer,
+      assist: RESULT_TYPE.goalAssist, goalAssist: RESULT_TYPE.goalAssist,
+      playerIn: RESULT_TYPE.substitutionIn, substitutionIn: RESULT_TYPE.substitutionIn, in: RESULT_TYPE.substitutionIn,
+      playerOut: RESULT_TYPE.substitutionOut, substitutionOut: RESULT_TYPE.substitutionOut, out: RESULT_TYPE.substitutionOut,
+      reason: RESULT_TYPE.varReasonGoal, varReasonGoal: RESULT_TYPE.varReasonGoal,
+      varReasonPenalty: RESULT_TYPE.varReasonPenalty, varReasonCards: RESULT_TYPE.varReasonCards,
+      varReasonPenaltyNotAwarded: RESULT_TYPE.varReasonPenaltyNotAwarded,
+      varReasonRedCardUpgrade: RESULT_TYPE.varReasonRedCardUpgrade,
+      varReasonMistakenIdentity: RESULT_TYPE.varReasonMistakenIdentity,
+      varReasonOther: RESULT_TYPE.varReasonOther, varReasonGoalNotAwarded: RESULT_TYPE.varReasonGoalNotAwarded,
+      varReasonRefereeDecisionConfirmed: RESULT_TYPE.varReasonRefereeDecisionConfirmed,
+      varReasonRefereeDecisionCancelled: RESULT_TYPE.varReasonRefereeDecisionCancelled,
+      varReasonRedCardGiven: RESULT_TYPE.varReasonRedCardGiven
+    };
 
-    // The real product derives each goal's own team-tally scoreboard (a single running
-    // per-team count, e.g. "0 - 1", NOT the combined match score) purely from goal/
-    // ownGoal/penaltyScored incidents processed in chronological order — see the real
-    // MOCK_FOOTBALL_TIMELINE_DATA sample (goal.oldScore/newScore are single `goal` counts).
-    // We replicate that derivation here rather than trusting the manually-typed "score"
-    // text field, so the real-render path is internally self-consistent by construction.
-    const chronological = [...items].sort((a,b)=>
-      (a.minute||0)-(b.minute||0)
-      ||(a.addedMinute||0)-(b.addedMinute||0)
-      ||(a.second||0)-(b.second||0)
-    );
-    let runHome=0, runAway=0;
-    const goalScoreById = new Map();
-    const runningAt = []; // {minute, home, away} snapshots after each goal, for half/full-time banners
-    for (const it of chronological) {
-      if (it.type==='goal'||it.type==='ownGoal'||it.type==='penaltyScored') {
-        const isHome = it.team==='home';
-        const scoringSide = it.type==='ownGoal' ? (isHome?'away':'home') : (isHome?'home':'away');
-        if (scoringSide==='home') { goalScoreById.set(it,{old:runHome,neu:++runHome}); }
-        else { goalScoreById.set(it,{old:runAway,neu:++runAway}); }
-        runningAt.push({minute: it.minute||0, home: runHome, away: runAway});
+    const refOf = item => String(item && (item.reference ?? item.id ?? item._id ?? item.relReference ?? ''));
+    const normalizeTeam = team => (team === 'home' || team === 'away' || team === 'full') ? team : 'full';
+    const minuteValue = item => (item?.minute || 0) + (item?.addedMinute || 0);
+    const sortValue = item => {
+      const base = minuteValue(item) + (item?.second || 0) / 6000;
+      const closesHalf = item?.type === 'halfTime' || item?.type === 'secondHalfStart' || item?.type === 'fullTime';
+      return base + (closesHalf ? 0.5 : 0);
+    };
+    const isRawScoringIncident = item => ['goal','ownGoal','penaltyScored'].includes(item?.type);
+    const scoreTextAtMinute = (minuteLimit, useLatest) => {
+      let homeGoals = 0, awayGoals = 0;
+      for (const item of chronological) {
+        if (!isRawScoringIncident(item)) continue;
+        if (!useLatest && sortValue(item) > minuteLimit) break;
+        const team = item.type === 'ownGoal' ? (item.team === 'home' ? 'away' : 'home') : item.team;
+        if (team === 'home') homeGoals++; else if (team === 'away') awayGoals++;
       }
-    }
-    function combinedScoreAsOf(minuteLimit, useLatest) {
-      if (useLatest) return runningAt.length ? runningAt[runningAt.length-1] : {home:0,away:0};
-      let last = {home:0,away:0};
-      for (const snap of runningAt) { if (snap.minute<=minuteLimit) last=snap; else break; }
-      return last;
-    }
+      return `${homeGoals} - ${awayGoals}`;
+    };
+    const childSortWeight = (parent, child) => {
+      if (parent?.type === 'substitution') {
+        if (child.gameResultTypeId === RESULT_TYPE.substitutionOut) return 0;
+        if (child.gameResultTypeId === RESULT_TYPE.substitutionIn) return 1;
+      }
+      return child.gameResultTypeId;
+    };
+    const categoryForResultType = id => {
+      if (GOAL_RESULT_IDS.has(id)) return 'Goal';
+      if (CORNER_RESULT_IDS.has(id)) return 'Corner';
+      if (CARD_RESULT_IDS.has(id)) return 'Card';
+      if (REVIEW_RESULT_IDS.has(id)) return 'Review';
+      if (SUBSTITUTE_RESULT_IDS.has(id)) return 'Substitution';
+      if (PENALTY_RESULT_IDS.has(id)) return 'Penalty';
+      return '';
+    };
+    const componentForResultType = id => {
+      if (GOAL_RESULT_IDS.has(id)) return 'goal';
+      if (CORNER_RESULT_IDS.has(id) || CARD_RESULT_IDS.has(id)) return 'card';
+      if (REVIEW_RESULT_IDS.has(id)) return 'review';
+      if (SUBSTITUTE_RESULT_IDS.has(id)) return 'substitute';
+      if (PENALTY_RESULT_IDS.has(id)) return 'penalty';
+      if (MESSAGE_RESULT_IDS.has(id)) return 'message';
+      if (NOTIFY_RESULT_IDS.has(id)) return 'notify';
+      return 'notify';
+    };
+    const inferChildResultType = (parent, child) => {
+      if (child?.gameResultTypeId) return child.gameResultTypeId;
+      const childType = String(child?.type || '');
+      if (CHILD_TYPE_RESULT[childType]) return CHILD_TYPE_RESULT[childType];
+      if (parent?.type === 'goal' || parent?.type === 'ownGoal') return childType.toLowerCase().includes('assist') || child?.assist ? RESULT_TYPE.goalAssist : RESULT_TYPE.goalScorer;
+      if (parent?.type === 'substitution') {
+        const value = `${child?.label || child?.gameResultValue || child?.player || ''}`.toLowerCase();
+        return childType.toLowerCase().includes('in') || !!child?.playerIn || value.includes(' in ') ? RESULT_TYPE.substitutionIn : RESULT_TYPE.substitutionOut;
+      }
+      if (parent?.type === 'yellowCard') return RESULT_TYPE.yellowCardPlayer;
+      if (parent?.type === 'secondYellow') return RESULT_TYPE.secondYellowPlayer;
+      if (parent?.type === 'redCard') return RESULT_TYPE.redCardPlayer;
+      if (parent?.type === 'corner') return RESULT_TYPE.corner;
+      if (parent && (parent.type === 'varReviewStart' || parent.type === 'varReviewEnd')) return RESULT_TYPE.varReasonGoal;
+      return 0;
+    };
+    const childDisplayValue = child => child?.gameResultValue || child?.player || child?.assist || child?.reason || child?.label || '';
+    const derivedLegacyChildren = item => {
+      if (item?.partial) return [];
+      if (Array.isArray(item?.children) && item.children.length) return item.children;
+      if (item?.type === 'goal' || item?.type === 'ownGoal') {
+        const kids = [];
+        if (item.player) kids.push({ type: 'scorer', gameResultValue: item.player, label: item.player });
+        if (item.assist) kids.push({ type: 'assist', gameResultValue: item.assist, label: item.assist });
+        return kids;
+      }
+      if (item?.type === 'yellowCard' || item?.type === 'secondYellow' || item?.type === 'redCard' || item?.type === 'corner') {
+        return item.player ? [{ type: 'player', gameResultValue: item.player, label: item.player }] : [];
+      }
+      if (item?.type === 'substitution') {
+        const kids = [];
+        if (item.playerOut) kids.push({ type: 'out', gameResultValue: item.playerOut, label: item.playerOut, iconKey: 'ico-substitution-out' });
+        if (item.playerIn) kids.push({ type: 'in', gameResultValue: item.playerIn, label: item.playerIn, iconKey: 'ico-substitution-in' });
+        return kids;
+      }
+      if (item && (item.type === 'varReviewStart' || item.type === 'varReviewEnd')) {
+        return item.reason ? [{ type: 'reason', gameResultValue: item.reason, label: item.reason }] : [];
+      }
+      if (item?.type === 'penaltyScored' && item.player) {
+        return [{ type: 'scorer', gameResultValue: item.player, label: item.player }];
+      }
+      return [];
+    };
+    const isLinkedChild = item => {
+      if (!item?.relReference) return false;
+      const ownRef = refOf(item);
+      if (ownRef && ownRef === String(item.relReference)) return false;
+      if (Array.isArray(item.children) && item.children.length) return false;
+      if (CHILD_RESULT_IDS.has(item.gameResultTypeId)) return true;
+      return /assist|scorer|reason|player|substitution(in|out)|player(in|out)|^in$|^out$/i.test(String(item.type || ''));
+    };
+    const toChildTimelineItem = (child, parent, idx) => {
+      const parentId = refOf(parent);
+      const eventPeriodId = child?.eventPeriodId || parent?.eventPeriodId || ((parent?.minute || 0) > PD ? 2 : 1);
+      const gameResultTypeId = inferChildResultType(parent, child);
+      const qaType = child?.qaType || child?.type || parent?.type || '';
+      return {
+        id: String(child?.id ?? child?._id ?? child?.reference ?? `${parentId}-child-${idx}`),
+        relReference: String(child?.relReference || parentId),
+        minute: minuteValue(child && child.minute != null ? child : parent),
+        second: child?.second ?? parent?.second ?? 0,
+        eventPeriodId,
+        type: categoryForResultType(gameResultTypeId),
+        team: normalizeTeam(child?.team ?? parent?.team),
+        label: child?.label || childDisplayValue(child),
+        iconKey: child?.iconKey || '',
+        gameResultTypeId,
+        gameResultValue: childDisplayValue(child),
+        children: [],
+        qaType,
+        componentKey: componentForResultType(gameResultTypeId)
+      };
+    };
+    const mergedParents = (() => {
+      const clones = rawItems.map(item => ({ ...item, children: Array.isArray(item.children) ? item.children.map(child => ({ ...child })) : item.children }));
+      const byRef = new Map();
+      clones.forEach(item => { const ref = refOf(item); if (ref) byRef.set(ref, item); });
+      const externalChildren = new Map();
+      const parents = [];
+      for (const item of clones) {
+        if (isLinkedChild(item) && byRef.has(String(item.relReference))) {
+          const key = String(item.relReference);
+          if (!externalChildren.has(key)) externalChildren.set(key, []);
+          externalChildren.get(key).push(item);
+          continue;
+        }
+        parents.push(item);
+      }
+      for (const parent of parents) {
+        const ref = refOf(parent);
+        const extras = (externalChildren.get(ref) || []).map((child, idx) => toChildTimelineItem(child, parent, idx));
+        if (extras.length) {
+          const existingSource = (Array.isArray(parent.children) && parent.children.length) ? parent.children : derivedLegacyChildren(parent);
+          const existing = existingSource.map((child, idx) => child && child.gameResultTypeId ? child : toChildTimelineItem(child, parent, idx));
+          const dedup = new Map();
+          [...existing, ...extras].forEach(child => dedup.set(String(child.id), child));
+          parent.children = [...dedup.values()].sort((a,b)=>childSortWeight(parent, a)-childSortWeight(parent, b) || a.minute-b.minute || a.second-b.second);
+        }
+      }
+      return parents;
+    })();
+    const chronological = [...mergedParents].sort((a,b)=>
+      minuteValue(a)-minuteValue(b)
+      || (a.second||0)-(b.second||0)
+    );
 
-    function scoreboardHtml(oldNeu) {
-      if (!oldNeu) return '';
-      return `<div class="obg-football-timeline-incident-scoreboard-wrapper"><span>${oldNeu.old}</span><span> - </span><span class="bold">${oldNeu.neu}</span></div>`;
+    function getCurrentPeriodAbsMinutes(periodId) {
+      let absMinutes = 0;
+      for (let i = 1; i <= periodId; i++) absMinutes += GAME_DURATIONS[i] || 0;
+      return absMinutes;
+    }
+    function getEventTime(item) {
+      const absMinutes = getCurrentPeriodAbsMinutes(item.eventPeriodId || ((item.minute||0) > PD ? 2 : 1));
+      const periodExtraTime = (item.minute || 0) - absMinutes;
+      const minuteText = periodExtraTime > 0 ? `${absMinutes} + ${periodExtraTime}` : String(item.minute || 0);
+      return `${minuteText}'`;
+    }
+    function scoreboardHtml(score) {
+      return score ? `<div class="obg-football-timeline-incident-scoreboard-wrapper">${esc(score)}</div>` : '';
     }
     function itemWrapper(direction, title, icon, bodyHtml) {
       const isFull = direction==='full';
@@ -378,142 +571,97 @@
     function host(typeClass, direction, title, icon, bodyHtml) {
       return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}"><div class="obg-football-incident-item">${itemWrapper(direction, title, icon, bodyHtml)}</div></div>`;
     }
-
-    // PR #20664 replaces the old per-component `data` DTO with TimelineItem parents
-    // whose related follow-up statistics are nested in `children`. Empty children are
-    // therefore the real partial state: Goal/Card render title-only, Substitute renders
-    // an empty wrapper, and Review switches itself to the centered full-width layout.
-    const RESULT_TYPE = {
-      kickOff:96, halfTime:97, secondHalfStart:98, fullTime:105, injuryTime:106,
-      goal:107, ownGoal:108, goalScorer:109, goalAssist:110,
-      yellowCard:111, yellowCardPlayer:112, secondYellow:113, secondYellowPlayer:114,
-      redCard:115, redCardPlayer:116, substitution:118, substitutionIn:117, substitutionOut:118,
-      corner:119, penaltyAwarded:120, penaltyScored:121, penaltyMissed:122,
-      varReviewStart:123, varReasonGoal:124, varReviewEnd:135
-    };
-    const TYPE_META = {
-      goal:['goal','Goal','goal'], ownGoal:['goal','Own Goal','ownGoal'],
-      yellowCard:['card','Yellow Card','yellowCard'], secondYellow:['card','2nd Yellow Card','secondYellow'],
-      redCard:['card','Red Card','redCard'], corner:['card','Corner','corner'],
-      substitution:['substitute','Substitution','substitution'],
-      penaltyAwarded:['penalty','Penalty','penaltyAwarded'],
-      penaltyScored:['penalty','Penalty scored','penaltyScored'],
-      penaltyMissed:['penalty','Penalty missed','penaltyMissed'],
-      varReviewStart:['review','VAR review starts','varReviewStart'],
-      varReviewEnd:['review','VAR review ends','varReviewEnd'],
-      kickOff:['notify','Kick Off',''], secondHalfStart:['notify','Start of 2nd half time',''],
-      injuryTime:['notify','Injury Time',''], halfTime:['message','Half Time',''],
-      fullTime:['message','Match ends','']
-    };
-    function derivedChildren(item, parentId, eventPeriodId) {
-      if (Array.isArray(item.children)) return item.children;
-      if (item.partial) return [];
-      const child = (suffix, type, label, resultType, value, iconKey) => ({
-        id:`${parentId}-${suffix}`, relReference:parentId, minute:item.minute||0, second:item.second||0,
-        eventPeriodId, type, team:item.team||'', label:label||'', iconKey:iconKey||'',
-        gameResultTypeId:resultType, gameResultValue:value||label||'', children:[]
-      });
-      if (item.type==='goal'||item.type==='ownGoal') {
-        const children = [];
-        if (item.player) children.push(child('scorer','scorer',item.player,RESULT_TYPE.goalScorer,item.player,''));
-        if (item.assist) children.push(child('assist','assist',item.assist,RESULT_TYPE.goalAssist,item.assist,''));
-        return children;
-      }
-      if (item.type==='yellowCard'||item.type==='secondYellow'||item.type==='redCard'||item.type==='corner') {
-        const childType = item.type==='yellowCard' ? RESULT_TYPE.yellowCardPlayer
-          : item.type==='secondYellow' ? RESULT_TYPE.secondYellowPlayer
-          : item.type==='redCard' ? RESULT_TYPE.redCardPlayer : RESULT_TYPE.corner;
-        return item.player ? [child('player','player',item.player,childType,item.player,'')] : [];
-      }
-      if (item.type==='substitution') {
-        const children = [];
-        if (item.playerOut) children.push(child('out','player',item.playerOut,RESULT_TYPE.substitutionOut,item.playerOut,'ico-substitution-out'));
-        if (item.playerIn) children.push(child('in','player',item.playerIn,RESULT_TYPE.substitutionIn,item.playerIn,'ico-substitution-in'));
-        return children;
-      }
-      if (item.type==='varReviewStart'||item.type==='varReviewEnd') {
-        return item.reason ? [child('reason','reason',item.reason,RESULT_TYPE.varReasonGoal,item.reason,'')] : [];
-      }
-      return [];
+    function plainHost(typeClass, bodyHtml) {
+      return `<div class="obg-timeline-incident-component obg-football-timeline-incident-${typeClass}">${bodyHtml}</div>`;
     }
     function toTimelineItem(item) {
-      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
-      const parentId = String(item.reference || item._id);
+      const parentId = refOf(item);
       const eventPeriodId = item.eventPeriodId || ((item.minute||0) > PD ? 2 : 1);
-      const meta = TYPE_META[item.type] || ['notify',item.type,''];
-      const resultType = RESULT_TYPE[item.type] || 0;
-      const minute = (item.minute||0) + (item.addedMinute||0);
+      const meta = TYPE_META[item.type] || ['', item.label || item.type || '', item.type || ''];
+      const gameResultTypeId = item.gameResultTypeId || RESULT_TYPE[item.type] || 0;
+      const team = PHASES.includes(item.type) ? 'full' : normalizeTeam(item.team);
+      let gameResultValue = item.gameResultValue || '';
+      if (item.type === 'injuryTime') gameResultValue = gameResultValue || `${item.extraMinutes||'?'} min added`;
+      else if (item.type === 'goal' || item.type === 'ownGoal' || item.type === 'penaltyScored') gameResultValue = gameResultValue || item.score || '';
+      else if (item.type === 'halfTime') gameResultValue = gameResultValue || item.scoreText || scoreTextAtMinute(sortValue(item), false);
+      else if (item.type === 'fullTime') gameResultValue = gameResultValue || item.scoreText || scoreTextAtMinute(0, true);
+      else if (item.type === 'penaltyAwarded' || item.type === 'penaltyMissed') gameResultValue = gameResultValue || item.player || '';
+      const childSource = (Array.isArray(item.children) && item.children.length) ? item.children : derivedLegacyChildren(item);
+      const children = childSource.map((child, idx) => child && child.gameResultTypeId ? child : toChildTimelineItem(child, item, idx));
       return {
-        id:parentId, relReference:item.relReference, minute, second:item.second||0,
-        eventPeriodId, type:meta[0], team:PHASES.includes(item.type)?'':(item.team||''),
-        label:meta[1], iconKey:meta[2], gameResultTypeId:resultType,
-        gameResultValue:item.type==='injuryTime' ? `${item.extraMinutes||'?'} min added` : (item.player||''),
-        children:derivedChildren(item,parentId,eventPeriodId), qaType:item.type
+        id: parentId,
+        relReference: item.relReference,
+        minute: minuteValue(item),
+        second: item.second||0,
+        eventPeriodId,
+        type: categoryForResultType(gameResultTypeId) || meta[0],
+        team,
+        label: item.label || meta[1],
+        iconKey: item.iconKey || meta[2],
+        gameResultTypeId,
+        gameResultValue,
+        children,
+        qaType: item.type,
+        componentKey: componentForResultType(gameResultTypeId)
       };
     }
-    function getEventTime(item) {
-      const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
-      const extra = item.minute - PD;
-      const minuteText = extra > 0 ? `${PD} + ${extra}` : String(item.minute);
-      const secondText = extra <= 0 && item.second ? `:${String(item.second).padStart(2,'0')}` : '';
-      return `${minuteText}${secondText}'`;
-    }
-    function componentFor(item) {
-      const id = item.gameResultTypeId;
-      if ([107,108,109,110,136].includes(id)) return 'goal';
-      if ([111,112,113,114,115,116,119,137,138,139,140].includes(id)) return 'card';
-      if (id>=123 && id<=135) return 'review';
-      if ([117,118,142].includes(id)) return 'substitute';
-      if ([104,120,121,122,141].includes(id)) return 'penalty';
-      if ([97,105].includes(id)) return 'message';
-      return 'notify';
-    }
     function renderGoalLike(item, direction) {
-      const body = item.children.map(child => child.gameResultTypeId===RESULT_TYPE.goalAssist
-        ? `<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(child.label)})</div>`
-        : `<div class="obg-football-timeline-incident-goal-player">${esc(child.label)}</div>`).join('');
-      return host('goal', direction, item.label, tlIconHtml(item.qaType), body);
+      const lines = (item.children.length > 0 ? [item, ...item.children] : [item]).map(child => {
+        if (child.gameResultTypeId === RESULT_TYPE.goalAssist && child.gameResultValue) {
+          return `<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(child.gameResultValue)})</div>`;
+        }
+        if (child.gameResultTypeId === RESULT_TYPE.goalScorer && child.gameResultValue) {
+          return `<div class="obg-football-timeline-incident-goal-player">${esc(child.gameResultValue)}</div>`;
+        }
+        return '';
+      }).join('');
+      return host('goal', direction, item.label, tlIconHtml(item.qaType), `${scoreboardHtml(item.gameResultValue)}${lines}`);
     }
     function renderCardLike(item, direction) {
-      const body = item.children.map(child=>`<div class="obg-football-timeline-incident-card-player">${esc(child.label)}</div>`).join('');
-      return host('card', direction, item.label, tlIconHtml(item.qaType), body);
+      const players = ((item.gameResultTypeId === RESULT_TYPE.yellowCardPlayer || item.gameResultTypeId === RESULT_TYPE.secondYellowPlayer || item.gameResultTypeId === RESULT_TYPE.redCardPlayer)
+        ? [item]
+        : item.children
+      ).map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-card-player">${esc(child.gameResultValue)}</div>` : '').join('');
+      return host('card', direction, item.label, tlIconHtml(item.qaType), players);
     }
     function renderPenalty(item, direction) {
-      const body = item.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(item.gameResultValue)}</div>` : '';
-      return host('penalty', direction, item.label, tlIconHtml(item.qaType), body);
+      const playerHtml = item.gameResultTypeId === RESULT_TYPE.penaltyScored
+        ? item.children.map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(child.gameResultValue)}</div>` : '').join('')
+        : (item.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(item.gameResultValue)}</div>` : '');
+      return host('penalty', direction, item.label, tlIconHtml(item.qaType), `${item.gameResultTypeId === RESULT_TYPE.penaltyScored ? scoreboardHtml(item.gameResultValue) : ''}${playerHtml}`);
     }
     function renderSubstitute(item, direction) {
       const body = `<div class="obg-football-timeline-incident-substitute-wrapper">`
-        + item.children.map(child => {
-          const incoming = child.gameResultTypeId===RESULT_TYPE.substitutionIn;
-          return `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon">${incoming?'↓':'↑'}</span><span class="obg-football-timeline-incident-substitute-item-player ${incoming?'in':'out'}">${esc(child.gameResultValue)}</span></div>`;
-        }).join('') + `</div>`;
+        + (item.gameResultTypeId === RESULT_TYPE.cancelSubstitution
+          ? `<div class="obg-football-timeline-incident-substitute-cancel">${esc(item.gameResultValue)}</div>`
+          : (item.children.length > 0 ? [item, ...item.children] : [item]).map(child => {
+              if (!child.gameResultValue) return '';
+              const incoming = child.gameResultTypeId === RESULT_TYPE.substitutionIn;
+              return `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon">${tlSubstitutionChildIconHtml(child.iconKey)}</span><span class="obg-football-timeline-incident-substitute-item-player ${incoming?'in':'out'}">${esc(child.gameResultValue)}</span></div>`;
+            }).join(''))
+        + `</div>`;
       return host('substitute', direction, item.label, tlIconHtml('substitution'), body);
     }
     function renderReview(item, direction) {
-      const reviewDirection = item.children.length ? direction : 'full';
-      const body = reviewDirection==='full'
-        ? `<div class="obg-football-timeline-incident-review-full">${esc(item.label)} - ${esc(item.minute)}'</div>`
-        : item.children.map(child=>`<div class="obg-football-timeline-incident-review-reason">${esc(child.gameResultValue)}</div>`).join('');
+      const parentContainsReason = REVIEW_REASON_IDS.has(item.gameResultTypeId);
+      const reviewDirection = (parentContainsReason || item.children.length > 0) ? direction : 'full';
+      const body = reviewDirection === 'full'
+        ? `<div class="obg-football-timeline-incident-review-full"><span class="obg-football-timeline-incident-review-full-title">${esc(item.label)}</span><span>-</span><span class="obg-football-timeline-incident-review-full-time">${esc(item.minute)}'</span></div>`
+        : (parentContainsReason ? [item] : item.children).map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-review-reason">${esc(child.gameResultValue)}</div>` : '').join('');
       return host('review', reviewDirection, reviewDirection==='full'?null:item.label, tlIconHtml(item.qaType), body);
     }
-    function renderNotification(item, direction) {
-      const suffix = item.gameResultTypeId===RESULT_TYPE.injuryTime && item.gameResultValue
-        ? ` - <span class="obg-football-timeline-incident-notify-suffix">${esc(item.gameResultValue)}</span>` : '';
-      const body = `<div class="obg-football-timeline-incident-notify-wrapper"><span class="obg-football-timeline-incident-notify-text">${esc(item.label)}</span>${suffix}</div>`;
-      return host('notify', direction, null, tlIconHtml(item.qaType), body);
+    function renderNotification(item) {
+      const showSuffix = [100,101,102,103,106].includes(item.gameResultTypeId) && item.gameResultValue;
+      return plainHost('notify', `<div class="obg-football-timeline-incident-notify-wrapper"><div class="obg-football-timeline-incident-notify-content genos-typography-subtitle-small"><span class="obg-football-timeline-incident-notify-text">${esc(item.label)}</span>${showSuffix ? `<span>-</span><span class="obg-football-timeline-incident-notify-suffix">${esc(item.gameResultValue)}</span>` : ''}</div></div>`);
     }
-    function renderMessage(item, direction) {
-      const body = `<div class="obg-football-timeline-incident-message-wrapper">`
-        + (item.label?`<span class="obg-football-timeline-incident-message-title">${esc(item.label)}</span>`:'')
-        + `</div>`;
-      return host('message', direction, null, tlIconHtml(item.qaType), body);
+    function renderMessage(item) {
+      const teamsHtml = item.gameResultValue
+        ? `<div class="obg-football-timeline-incident-message-teams"><div class="obg-football-timeline-incident-message-teams-team">${esc(home)}</div><div class="obg-football-timeline-incident-message-teams-scoreboard">${esc(item.gameResultValue)}</div><div class="obg-football-timeline-incident-message-teams-team">${esc(away)}</div></div>`
+        : '';
+      return plainHost('message', `<div class="obg-football-timeline-incident-message-wrapper">${item.label ? `<div class="obg-football-timeline-incident-message-title">${esc(item.label)}</div>` : ''}${teamsHtml}</div>`);
     }
 
-    // Exact PR #20664 container behavior: filter keys are capitalized Goal/Card/Corner,
-    // while the supplied TimelineItem mock uses lower-case types. That currently leaves
-    // only the always-present All chip visible; the QA port intentionally exposes this
-    // implementation mismatch instead of silently normalizing it.
+    const timelineItems = chronological.map(toTimelineItem);
     const activeFilterKey = { all:'', goals:'Goal', cards:'Card', corners:'Corner' }[window._tlFilter||'all'] ?? '';
     const filterOptions = [
       {key:'',label:'All',mode:'all'},
@@ -521,46 +669,40 @@
       {key:'Card',label:'Cards',mode:'cards'},
       {key:'Corner',label:'Corners',mode:'corners'}
     ];
-    const timelineTypes = chronological.map(item=>toTimelineItem(item).type);
-    const availableFilters = filterOptions.filter(option=>option.key==='' || timelineTypes.includes(option.key));
+    const availableTypes = new Set(timelineItems.map(item => String(item.type || '').toLowerCase()).filter(Boolean));
+    const availableFilters = filterOptions.filter(option=>option.key==='' || availableTypes.has(option.key.toLowerCase()));
     const chipHtml = option => {
       const isSelected = activeFilterKey===option.key;
-      return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${option.mode}')">`
-        + `<span class="genos-typography-body-small ${isSelected?'selected':'not-selected'}">${option.label}</span></div>`;
+      return `<div class="obg-match-timeline-filter-bar-chip${isSelected?'':' bordered unselected'}" data-tl-selected="${isSelected}" onclick="window.tlSetFilter('${option.mode}')">`
+        + `<span class="obg-match-timeline-filter-bar-chip-label genos-typography-body-small">${esc(option.label)}</span></div>`;
     };
-    const filterBarHtml = `<div class="obg-match-timeline-filter-bar-wrapper">${availableFilters.map(chipHtml).join('')}</div>`;
-    const visibleItems = activeFilterKey==='' ? chronological : chronological.filter(item=>toTimelineItem(item).type===activeFilterKey);
+    const filterBarHtml = availableFilters.length ? `<div class="obg-match-timeline-filter-bar-wrapper">${availableFilters.map(chipHtml).join('')}</div>` : '';
+    const visibleItems = activeFilterKey==='' ? timelineItems : timelineItems.filter(item=>String(item.type).toLowerCase()===activeFilterKey.toLowerCase());
 
-    // Real component lists newest-first (see MOCK_FOOTBALL_TIMELINE_DATA ordering).
     let rows = '';
-    for (const item of visibleItems.slice().reverse()) {
-      const timelineItem = toTimelineItem(item);
+    for (const timelineItem of visibleItems.slice().reverse()) {
       const direction = timelineItem.team==='home' ? 'left' : (timelineItem.team==='away' ? 'right' : 'full');
-      let markerTime = '';
-      if (direction!=='full') {
-        markerTime = `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${getEventTime(timelineItem)}</div></div>`;
-      }
+      const markerTime = direction!=='full'
+        ? `<div class="obg-vertical-timeline-marker"><div class="obg-vertical-timeline-marker-time">${getEventTime(timelineItem)}</div></div>`
+        : '';
       let incidentHtml = '';
-      switch (componentFor(timelineItem)) {
+      switch (timelineItem.componentKey) {
         case 'goal': incidentHtml = renderGoalLike(timelineItem,direction); break;
         case 'card': incidentHtml = renderCardLike(timelineItem,direction); break;
         case 'penalty': incidentHtml = renderPenalty(timelineItem,direction); break;
         case 'substitute': incidentHtml = renderSubstitute(timelineItem,direction); break;
         case 'review': incidentHtml = renderReview(timelineItem,direction); break;
-        case 'message': incidentHtml = renderMessage(timelineItem,direction); break;
-        default: incidentHtml = renderNotification(timelineItem,direction);
+        case 'message': incidentHtml = renderMessage(timelineItem); break;
+        default: incidentHtml = renderNotification(timelineItem);
       }
       if (!incidentHtml) continue;
       rows += `<div class="obg-vertical-timeline-item obg-vertical-timeline-${direction}">${markerTime}<div class="obg-vertical-timeline-content">${incidentHtml}</div></div>`;
     }
     if (!rows) rows = '<div style="text-align:center;color:#999;padding:24px;font-size:13px;font-family:\'DM Sans\',sans-serif">No incidents yet</div>';
-    // Per SBOF-9706/9619/9809 (Expected Period Duration contract) — same config knob the
-    // Demo-mode renderer already exposes via the QA panel's "Match config" section.
-    const PD = (window._tlConfig && window._tlConfig.periodDuration) || 45;
     const horizontalHtml = horizontalTimelineHtml(chronological, PD);
     const horizontalWrapperHtml = horizontalHtml ? `<div class="obg-match-timeline-horizontal-wrapper">${horizontalHtml}</div>` : '';
-    p.innerHTML = `<div class="obg-match-timeline-wrapper">${horizontalWrapperHtml}${filterBarHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
-      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Vertical timeline markup and partial-update behavior are ported from draft PR #20664 (SBEUJE-7223); horizontal timeline and filters come from their merged implementations. The real container still hardcodes mock data, so this QA view uses manually injected TimelineItem parents and relReference-linked children.</div>`;
+    p.innerHTML = `<div class="obg-match-timeline-wrapper">${filterBarHtml}${horizontalWrapperHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
+      + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Data-only mode now mirrors PR #20664 head adbef97a7084a21ded02b72846dd4066e586ebe3: relReference-linked children are merged under their parent, generic incidents can render with TimelineTeam=full, substitution rows honor child iconKey direction, and marker times now follow the real extra-time formatter. PR #20644's mapper was reviewed and documented near horizontalTimelineHtml for the future real wiring.</div>`;
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -839,10 +981,12 @@
 })();/**
  * Timeline QA Tool v2 — Injectable bookmarklet (mode toggle edition)
  * Two modes:
- *  - Data only: renders using the ported vertical-timeline markup/CSS updated to draft
- *    PR #20664 (SBEUJE-7223), including TimelineItem parents, relReference-linked children,
- *    gameResultTypeId component dispatch, and empty-children partial rendering.
- *    It also includes the merged filter bar from PR #20578 (SBEUJE-4840).
+ *  - Data only: renders using the ported vertical-timeline markup/CSS updated through
+ *    PR #20664 head adbef97a7084a21ded02b72846dd4066e586ebe3 (SBEUJE-7223), including
+ *    TimelineItem parent/child relReference grouping, `full` team direction support,
+ *    string scoreboards, participant-aware half/full-time rows, extra-time marker formatting,
+ *    substitute child icon direction, and the translated-chip filter-bar host markup from
+ *    the real Angular components.
  *  - Demo:      our OWN invented mock tab+panel+CSS (horizontal bar + styled list) —
  *    a Figma-based visual preview only, useful for comparison, NOT real developer code.
  *
@@ -864,7 +1008,7 @@
  *     (libs/betting/match-timeline/src/util/timeline.util.ts) — filters to schema-mapped +
  *     Active/non-cancelled stats, groups children by relReference, sorts by minute/second.
  *   Output: TimelineItem
- *     { id, relReference?, minute, second, eventPeriodId, type, team: 'home'|'away',
+ *     { id, relReference?, minute, second, eventPeriodId, type, team: 'home'|'away'|'full',
  *       label, iconKey, gameResultTypeId, gameResultValue, children: TimelineItem[] }
  *   NOTE: no separate playerName/assistName/cardType metadata fields exist in the shipped
  *   model — assist/sub relationships are nested TimelineItem `children` via relReference,
@@ -889,7 +1033,7 @@
  *     not team/side dependent) — our tool previously had this reversed.
  *   - Notify-type phase text uses a plain hyphen separator, e.g. "Injury Time - 3 min added",
  *     "Kick Off" (capitalized), matching MOCK_FOOTBALL_TIMELINE_DATA in
- *     football-timeline-temp-metadata.mock.ts exactly.
+ *     vertical-timeline/football-incidents/football-timeline-temp-metadata.mock.ts exactly.
  * Per that mock file's own header comment: "temporary mock data... to be used before real
  * data is available... will be removed once real data is integrated" — i.e. even the real
  * component ships with hardcoded mock data today, reinforcing that end-to-end real-data
@@ -903,8 +1047,17 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.62';
+  const TL_TOOL_VERSION = 'v0.1.64';
   window._tlToolVersion = TL_TOOL_VERSION;
+  // v0.1.64 (2026-07-21): daily-sync port of PR #20664 / SBEUJE-7223 from new head
+  // adbef97a7084a21ded02b72846dd4066e586ebe3 into Data-only renderReal(): marker times now
+  // follow VerticalTimelineUtil.getEventTime() (no :ss, extra-time as 45 + 2'), substitution
+  // child rows honor ico-substitution-out/in direction, and PR-head/path comments were refreshed.
+  // v0.1.63 (2026-07-20): ported PR #20664 from dd50bd83fa821a712fa03c224bbf1afb44e0acc3 to
+  // a7ad706d829901b68e78a9bb861ecd633df2f7a1 into Data-only renderReal(): relReference child
+  // grouping for partial incidents, `full` team support, string scoreboards/message rows, and
+  // filter-chip host markup parity. PR #20644 (SBEUJE-7296) reviewed; only a future-reference
+  // comment was added near horizontalTimelineHtml because the real container still uses mock data.
   if (document.getElementById('tl-qa-panel')) {
     var ep = document.getElementById('tl-qa-panel');
     const opening = ep.style.display === 'none';
@@ -1194,9 +1347,10 @@
               <option value="fullTime">🏁 Full Time</option>
               <option value="injuryTime">⏱ Injury Time</option>
             </select>
-            <select class="tl-qa-input" id="tl-team" style="width:80px;flex:none">
+            <select class="tl-qa-input" id="tl-team" style="width:140px;flex:none">
               <option value="home">Home</option>
               <option value="away">Away</option>
+              <option value="full">Full width / no team</option>
             </select>
           </div>
 
@@ -1630,7 +1784,7 @@
     $('tl-mode-demo').classList.toggle('active', isDemo);
     $('tl-qa-mode-desc').textContent = isDemo
       ? 'Full mock tab+CSS injected — shows how Timeline should look (our own Figma-based preview)'
-      : 'Real vertical-timeline port updated to draft PR #20664 — TimelineItem parent/children partial updates; data wiring is still simulated by this QA tool';
+      : 'Real vertical-timeline port updated through PR #20664 — relReference child grouping + TimelineTeam=full + real extra-time markers; data wiring is still simulated by this QA tool';
     $('tl-inject-btn').textContent = window._tlInjected
       ? (isDemo ? '✓ Demo injected' : '✓ Data ready')
       : (isDemo ? 'Inject Demo Tab' : 'Inject Data Mode');
@@ -1665,7 +1819,7 @@
   }
   function updatePlayerNames() {
     const t = $('tl-type').value;
-    const team = $('tl-team').value || 'home';
+    const team = ($('tl-team').value === 'away') ? 'away' : 'home';
     if (PHASES.includes(t)) return;
     if (VAR_TYPES.includes(t)) {
       $('tl-player').value = 'Goal';
@@ -1684,7 +1838,7 @@
     const scoreInput = $('tl-score');
     if (!scoreInput || !GOAL_TYPES.includes(type)) return;
     const minute = parseInt($('tl-min').value) || 0;
-    const team = $('tl-team').value;
+    const team = $('tl-team').value === 'away' ? 'away' : 'home';
     const before = computeScoreBefore(minute, 0);
     const side = type === 'ownGoal' ? (team === 'home' ? 'away' : 'home') : team;
     const after = { home: before.home, away: before.away };
@@ -1713,22 +1867,17 @@
     const isScore = GOAL_TYPES.includes(t);
     const isInjuryTime = t === 'injuryTime';
     const isVar = VAR_TYPES.includes(t);
-    // Swap the team select's options between the normal Home/Away pair and the
-    // VAR-specific 3-option feed-source picker (Home/OPTA, Away/OPTA, No team/RunningBall)
-    // depending on the selected incident type (SBEUJE-6564).
+    // PR #20664/TimelineTeam: team-less incidents are now modeled explicitly as `full`,
+    // not just VAR's old empty-string RunningBall special-case. Keep the third option
+    // available for all incident types, but relabel it with the feed-specific copy when
+    // the tester is exercising VAR.
     const teamSelect = $('tl-team');
-    if (isVar && teamSelect.dataset.mode !== 'var') {
-      const prev = teamSelect.value;
-      teamSelect.innerHTML = '<option value="home">Home (OPTA feed)</option>'
-        + '<option value="away">Away (OPTA feed)</option>'
-        + '<option value="">📺 No team — generic layout (RunningBall feed)</option>';
-      teamSelect.value = (prev === 'home' || prev === 'away') ? prev : 'home';
-      teamSelect.dataset.mode = 'var';
-    } else if (!isVar && teamSelect.dataset.mode === 'var') {
-      teamSelect.innerHTML = '<option value="home">Home</option><option value="away">Away</option>';
-      teamSelect.value = 'home';
-      delete teamSelect.dataset.mode;
-    }
+    const homeOption = teamSelect.querySelector('option[value="home"]');
+    const awayOption = teamSelect.querySelector('option[value="away"]');
+    const fullOption = teamSelect.querySelector('option[value="full"]');
+    if (homeOption) homeOption.textContent = isVar ? 'Home (OPTA feed)' : 'Home';
+    if (awayOption) awayOption.textContent = isVar ? 'Away (OPTA feed)' : 'Away';
+    if (fullOption) fullOption.textContent = isVar ? '📺 No team — generic layout (RunningBall feed)' : 'Full width / no team';
     $('tl-row-base').style.display  = 'flex';
     // Player name is irrelevant for substitutions (Player out/in are used instead) and
     // for phase bands (no scorer/carded player involved) — everything else shows it.
@@ -2559,7 +2708,7 @@
     $('tl-type').value = inc.type;
     $('tl-type').disabled = true;
     updateRows();
-    $('tl-team').value = VAR_TYPES.includes(inc.type) ? inc.team : (inc.team || 'home');
+    $('tl-team').value = inc.team || 'home';
     $('tl-team').disabled = true;
     if (inc.type !== 'injuryTime') { $('tl-min').value = inc.minute; $('tl-min').disabled = true; }
     $('tl-sec').value = inc.second || 0;
