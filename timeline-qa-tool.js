@@ -1047,8 +1047,17 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.64';
+  const TL_TOOL_VERSION = 'v0.1.65';
   window._tlToolVersion = TL_TOOL_VERSION;
+  // v0.1.65 (2026-07-21): fixed SBEUJE-7223 bug — completing a partial incident (e.g. a
+  // substitution) with only ONE of its two relReference-linked children filled in (e.g.
+  // Player out but not Player in yet) used to unconditionally clear `partial`, permanently
+  // hiding the 🧩→✓ button and leaving no way to attach the remaining child later (users
+  // had to work around it by adding a bogus unlinked second top-level incident instead).
+  // Now: isFullyAttached() keeps the incident partial until every expected child is
+  // present, the completing handler merges instead of overwriting fields so a blank input
+  // doesn't erase a previously-attached child, and tlStartCompleteIncident() pre-fills
+  // already-known values instead of blanking them so testers can add just the remainder.
   // v0.1.64 (2026-07-21): daily-sync port of PR #20664 / SBEUJE-7223 from new head
   // adbef97a7084a21ded02b72846dd4066e586ebe3 into Data-only renderReal(): marker times now
   // follow VerticalTimelineUtil.getEventTime() (no :ss, extra-time as 45 + 2'), substitution
@@ -1542,6 +1551,19 @@
     }
     return [];
   }
+  // SBEUJE-7223: per BE, a substitution's OUT and IN player each arrive as their own
+  // relReference-linked incident, independently of one another — they are not
+  // guaranteed to land in the same completion. isFullyAttached() reports whether every
+  // child the real feed could ever send for this incident type has now been attached,
+  // so the caller knows whether to keep the parent "partial" (🧩→✓ still available to
+  // attach the remaining child later) or clear the flag because nothing is left to add.
+  function isFullyAttached(incident) {
+    if (incident.type === 'substitution') return !!(incident.playerOut && incident.playerIn);
+    if (incident.type === 'goal' || incident.type === 'ownGoal') return !!incident.player;
+    if (CARD_DETAIL_TYPES.includes(incident.type)) return !!incident.player;
+    if (VAR_TYPES.includes(incident.type)) return !!incident.reason;
+    return true;
+  }
   const PHASE_SYNC_LABELS = { kickOff: 'Kick off', halfTime: 'Half time', secondHalfStart: '2nd half', fullTime: 'Match ends' };
   function getEventIdFromPage() {
     const params = new URLSearchParams(location.search);
@@ -1730,7 +1752,12 @@
         ? `<button class="tl-qa-inc-restore" data-id="${item._id}" title="Restore (undo VAR cancellation)">↺</button>`
         : `<button class="tl-qa-inc-cancel" data-id="${item._id}" title="Cancel via VAR (SBOF-9514/9513)">⊘</button>`;
       const cancelledTag = cancelled ? ' <span class="tl-qa-inc-cancelled-tag">cancelled</span>' : '';
-      const partialTag = item.partial ? ' <span class="tl-qa-inc-partial-tag">empty children</span>' : '';
+      // A partial incident can already carry some (but not all) relReference-linked
+      // children from an earlier completion — label it accordingly instead of always
+      // saying "empty children", so testers know a further 🧩→✓ click adds the rest.
+      const partialTag = item.partial
+        ? ` <span class="tl-qa-inc-partial-tag">${item.children && item.children.length ? 'partial — child pending' : 'empty children'}</span>`
+        : '';
       const completeBtn = item.partial ? `<button class="tl-qa-inc-complete" data-id="${item._id}" title="Attach relReference-linked child items to this parent">🧩→✓</button>` : '';
       return `<div class="tl-qa-inc-row"><span class="tl-qa-inc-row-label">${label}${minTxt}${teamTxt}${cancelledTag}${partialTag}</span>${completeBtn}${cancelBtn}<button class="tl-qa-inc-remove" data-id="${item._id}" title="Remove">✕</button></div>`;
     }).join('');
@@ -2609,19 +2636,25 @@
       const inc = (window._tlIncidents || []).find(it => String(it._id) === String(window._tlCompletingId));
       if (!inc) { tlCancelCompleteIncident(); tlStatus('Incident to complete no longer exists', true); return; }
       if (inc.type === 'substitution') {
-        inc.playerOut = $('tl-pout').value.trim() || undefined;
-        inc.playerIn  = $('tl-pin').value.trim()  || undefined;
+        // Merge rather than overwrite: the OUT and IN players can each arrive as their
+        // own relReference-linked event, so a blank field here must not erase a value
+        // attached in an earlier completion of this same partial incident.
+        inc.playerOut = $('tl-pout').value.trim() || inc.playerOut;
+        inc.playerIn  = $('tl-pin').value.trim()  || inc.playerIn;
       } else if (VAR_TYPES.includes(inc.type)) {
-        inc.reason = $('tl-player').value.trim() || undefined;
+        inc.reason = $('tl-player').value.trim() || inc.reason;
       } else {
-        inc.player = $('tl-player').value.trim() || undefined;
-        if (GOAL_TYPES.includes(inc.type)) inc.assist = $('tl-assist').value.trim() || undefined;
+        inc.player = $('tl-player').value.trim() || inc.player;
+        if (GOAL_TYPES.includes(inc.type)) inc.assist = $('tl-assist').value.trim() || inc.assist;
       }
       inc.children = buildPrChildren(inc);
-      delete inc.partial;
+      const fullyAttached = isFullyAttached(inc);
+      if (fullyAttached) delete inc.partial; else inc.partial = true;
       recomputeAllScores();
       window.tlRender();
-      tlStatus(`Attached ${inc.children.length} child item(s) to ${inc.type} ${inc.minute}' (relReference → ${inc.reference})`);
+      tlStatus(fullyAttached
+        ? `Attached ${inc.children.length} child item(s) to ${inc.type} ${inc.minute}' (relReference → ${inc.reference}) — complete`
+        : `Attached ${inc.children.length} child item(s) to ${inc.type} ${inc.minute}' (relReference → ${inc.reference}) — still partial, remaining child not yet received`);
       renderIncidentList();
       syncToMatchTab(inc);
       tlCancelCompleteIncident();
@@ -2713,11 +2746,24 @@
     if (inc.type !== 'injuryTime') { $('tl-min').value = inc.minute; $('tl-min').disabled = true; }
     $('tl-sec').value = inc.second || 0;
     $('tl-sec').disabled = true;
-    ['tl-player','tl-assist','tl-pout','tl-pin'].forEach(id2 => { const el = $(id2); if (el) el.value = ''; });
+    // Pre-fill fields already attached from a prior (partial) completion of this same
+    // incident, instead of blanking them — otherwise a tester adding the second
+    // relReference-linked child (e.g. the IN player after the OUT player was already
+    // attached) would silently lose the first one (see merge logic in the add-btn
+    // handler above, which now also tolerates blank fields for this reason).
+    $('tl-player').value = inc.player || inc.reason || '';
+    $('tl-assist').value = inc.assist || '';
+    $('tl-pout').value   = inc.playerOut || '';
+    $('tl-pin').value    = inc.playerIn  || '';
     $('tl-add-btn').textContent = `✓ Complete Incident (${inc.type} ${inc.minute || ''}')`;
     $('tl-add-btn').classList.add('tl-completing');
     $('tl-cancel-complete-btn').style.display = '';
-    tlStatus(`Completing partial incident — fill in the details and confirm (relReference → ${inc.reference})`);
+    const missing = inc.type === 'substitution'
+      ? [!inc.playerOut && 'Player out', !inc.playerIn && 'Player in'].filter(Boolean)
+      : [];
+    tlStatus(missing.length
+      ? `Completing partial incident — still missing: ${missing.join(', ')} (relReference → ${inc.reference})`
+      : `Completing partial incident — fill in the details and confirm (relReference → ${inc.reference})`);
   };
   window.tlCancelCompleteIncident = function() {
     window._tlCompletingId = null;
