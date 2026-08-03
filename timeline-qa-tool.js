@@ -175,7 +175,7 @@
       .obg-football-timeline-incident-goal-assist{font-size:10px;color:rgba(4,4,6,.7)}
 
       .obg-football-timeline-incident-scoreboard-wrapper{display:inline-flex;align-items:center;gap:4px;background:var(--genos-color-neutral-2,#eeeff2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;color:#040406}
-      .obg-football-timeline-incident-scoreboard-wrapper .bold{font-weight:800}
+      .obg-football-timeline-incident-scoreboard-wrapper .highlighted{font-weight:800}
 
       .obg-football-timeline-incident-substitute-wrapper{display:flex;flex-direction:column;row-gap:4px}
       .obg-football-timeline-incident-substitute-item{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:rgba(4,4,6,.7);background:var(--genos-color-neutral-2,#eeeff2);border-radius:6px;padding:3px 8px;width:fit-content}
@@ -265,6 +265,12 @@
   // its existing synthetic horizontal rendering for now; revisit here when the container
   // switches from mock sections to real timelineItems + matchClock.
   function horizontalTimelineHtml(chronological, PD) {
+    // Daily-sync note (2026-08-03, ported PR f536850 "feat(*): timeline items for
+    // horizontal timeline" / SBEUJE-7627): production now filters by a schema-driven
+    // `TimelineItem.useInHorizontalTimeline` flag (set per mapping entry) instead of a
+    // hardcoded type list. HDOT_TYPES below already matches the set of types that flag is
+    // configured true for today (goal/own-goal/cards) — kept as-is for parity, but if a
+    // future daily-sync run reports the allowed type set changed, update HDOT_TYPES here.
     const HDOT_TYPES = { goal:1, ownGoal:1, yellowCard:1, secondYellow:1, redCard:1 };
     const hItems = chronological.filter(it => HDOT_TYPES[it.type] && (it.addedMinute||0) === 0);
     const allMins = hItems.map(it=>it.minute||0);
@@ -301,8 +307,15 @@
         + groupsHtml
         + `</div></div>`;
     }
-    function separatorSection(content) {
-      return `<div class="obg-horizontal-timeline-item obg-horizontal-timeline-section-separator"><div class="obg-horizontal-timeline-separator-badge">${content}</div></div>`;
+    // Daily-sync note (2026-08-03, ported PR d5b22aa "feat(match-timeline): match clock
+    // display in horizontal timeline" / SBEUJE-7475): the separator between the two
+    // progress-bar halves no longer shows a static "HT" label — it now renders the live
+    // obg-match-clock value wrapped in an <obg-badge type="state" typeColor="open">, with
+    // seconds enabled. This tool doesn't track live match-clock seconds, so we render the
+    // whole-minute value, reusing our existing .obg-horizontal-timeline-separator-badge CSS
+    // (our own pixel-matched approximation of the real obg-badge, see stylesheet above).
+    function separatorSection(matchClockText) {
+      return `<div class="obg-horizontal-timeline-item obg-horizontal-timeline-section-separator">${matchClockText ? `<div class="obg-horizontal-timeline-separator-badge">${esc(matchClockText)}</div>` : ''}</div>`;
     }
 
     const half1Items = hItems.filter(it => (it.minute||0) <= PD);
@@ -312,9 +325,15 @@
 
     let sections = progressSection(half1Elapsed, PD, buildGroups(half1Items));
     if (curMin > PD) {
-      sections += separatorSection('HT');
+      sections += separatorSection(`${curMin}'`);
       sections += progressSection(half2Elapsed, PD, buildGroups(half2Items.map(it=>({...it, minute:(it.minute||0)-PD}))));
     }
+    // Note (ported PR 3c718bc "feat(match-timeline): hide horizontal timeline if we have
+    // extra time or penalty" / SBEUJE-7481): production now hides the whole horizontal
+    // timeline outside periods 1/2 (isFullTime() gate on horizontalTimelineAllowedForPeriodIds).
+    // This QA tool doesn't model extra-time/penalty-shootout phases (only kickOff/halfTime/
+    // secondHalfStart/fullTime/injuryTime — see PHASE_TYPES), so it's already equivalent to
+    // "always full-time" for every scenario it supports; no gating change needed here.
     return `<div class="obg-horizontal-timeline"><div class="obg-horizontal-timeline-wrapper">${sections}</div></div>`;
   }
 
@@ -556,8 +575,19 @@
       const minuteText = periodExtraTime > 0 ? `${absMinutes} + ${periodExtraTime}` : String(item.minute || 0);
       return `${minuteText}'`;
     }
-    function scoreboardHtml(score) {
-      return score ? `<div class="obg-football-timeline-incident-scoreboard-wrapper">${esc(score)}</div>` : '';
+    // Daily-sync note (2026-08-03, ported PR c2694d3 "fix(vertical timeline): highlight the
+    // score value returned from BE based score" / SBEUJE-7484): the scoreboard now splits
+    // "home-away" into two spans and highlights (bold) whichever side scored this incident
+    // (item.team === 'home' -> home span highlighted, otherwise away span).
+    function scoreboardHtml(score, team) {
+      if (!score) return '';
+      const [homeScore = '', awayScore = ''] = String(score).split('-');
+      const isHome = team === 'home';
+      return `<div class="obg-football-timeline-incident-scoreboard-wrapper">`
+        + `<span class="${isHome ? 'highlighted' : ''}">${esc(homeScore)}</span>`
+        + `<span>-</span>`
+        + `<span class="${!isHome ? 'highlighted' : ''}">${esc(awayScore)}</span>`
+        + `</div>`;
     }
     function itemWrapper(direction, title, icon, bodyHtml) {
       const isFull = direction==='full';
@@ -605,39 +635,79 @@
         componentKey: componentForResultType(gameResultTypeId)
       };
     }
+    // Daily-sync note (2026-08-03, ported PR 577d969 "Bugfix: vertical timeline display
+    // subparticipant names as BE will send player" / SBEUJE-7512): production now builds a
+    // `playersMap` keyed by gameResultValue (dedupes the same player id across parent+
+    // children, e.g. sub-on/sub-off pairs referencing the same person) with isScorer/
+    // isAssist/isIncoming flags, and resolves each id's display name via a `subParticipants`
+    // lookup. This standalone tool has no BE-fed subParticipants array (its own demo/manual
+    // incidents already store the player's display name directly in gameResultValue), so
+    // name-lookup is identity here — but the keyed-map dedup + flag pattern is ported as-is
+    // for structural parity with the real components (goal/card/penalty/substitute below).
     function renderGoalLike(item, direction) {
-      const lines = (item.children.length > 0 ? [item, ...item.children] : [item]).map(child => {
-        if (child.gameResultTypeId === RESULT_TYPE.goalAssist && child.gameResultValue) {
-          return `<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(child.gameResultValue)})</div>`;
-        }
-        if (child.gameResultTypeId === RESULT_TYPE.goalScorer && child.gameResultValue) {
-          return `<div class="obg-football-timeline-incident-goal-player">${esc(child.gameResultValue)}</div>`;
-        }
+      const goalPlayers = {};
+      (item.children.length > 0 ? [item, ...item.children] : [item]).forEach(child => {
+        if (!child.gameResultValue) return;
+        goalPlayers[child.gameResultValue] = {
+          name: child.gameResultValue,
+          isAssist: child.gameResultTypeId === RESULT_TYPE.goalAssist,
+          isScorer: child.gameResultTypeId === RESULT_TYPE.goalScorer
+        };
+      });
+      const lines = Object.values(goalPlayers).map(p => {
+        // SBEUJE-7482 "fix(football incidents): use crs key for assist label" only swapped
+        // the hardcoded "Assist" text for a CRS-driven translate key (timeline.game-event-
+        // goal-assist); the English wording is unchanged, so no visible-text change here.
+        if (p.isAssist) return `<div class="obg-football-timeline-incident-goal-assist">(Assist: ${esc(p.name)})</div>`;
+        if (p.isScorer) return `<div class="obg-football-timeline-incident-goal-player">${esc(p.name)}</div>`;
         return '';
       }).join('');
-      return host('goal', direction, item.label, tlIconHtml(item.qaType), `${scoreboardHtml(item.gameResultValue)}${lines}`);
+      return host('goal', direction, item.label, tlIconHtml(item.qaType), `${scoreboardHtml(item.gameResultValue, item.team)}${lines}`);
     }
     function renderCardLike(item, direction) {
-      const players = ((item.gameResultTypeId === RESULT_TYPE.yellowCardPlayer || item.gameResultTypeId === RESULT_TYPE.secondYellowPlayer || item.gameResultTypeId === RESULT_TYPE.redCardPlayer)
-        ? [item]
-        : item.children
-      ).map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-card-player">${esc(child.gameResultValue)}</div>` : '').join('');
+      const isPlayerIncident = item.gameResultTypeId === RESULT_TYPE.yellowCardPlayer || item.gameResultTypeId === RESULT_TYPE.secondYellowPlayer || item.gameResultTypeId === RESULT_TYPE.redCardPlayer;
+      const cardPlayers = {};
+      (isPlayerIncident ? [item] : item.children).forEach(child => {
+        if (child.gameResultValue) cardPlayers[child.gameResultValue] = child.gameResultValue;
+      });
+      const players = Object.values(cardPlayers).map(name => `<div class="obg-football-timeline-incident-card-player">${esc(name)}</div>`).join('');
       return host('card', direction, item.label, tlIconHtml(item.qaType), players);
     }
     function renderPenalty(item, direction) {
-      const playerHtml = item.gameResultTypeId === RESULT_TYPE.penaltyScored
-        ? item.children.map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(child.gameResultValue)}</div>` : '').join('')
-        : (item.gameResultValue ? `<div class="obg-football-timeline-incident-penalty-player">${esc(item.gameResultValue)}</div>` : '');
-      return host('penalty', direction, item.label, tlIconHtml(item.qaType), `${item.gameResultTypeId === RESULT_TYPE.penaltyScored ? scoreboardHtml(item.gameResultValue) : ''}${playerHtml}`);
+      const isPenaltyScored = item.gameResultTypeId === RESULT_TYPE.penaltyScored;
+      const penaltyPlayers = {};
+      (isPenaltyScored ? item.children : [item]).forEach(child => {
+        if (child.gameResultValue) penaltyPlayers[child.gameResultValue] = child.gameResultValue;
+      });
+      const playerHtml = Object.values(penaltyPlayers).map(name => `<div class="obg-football-timeline-incident-penalty-player">${esc(name)}</div>`).join('');
+      return host('penalty', direction, item.label, tlIconHtml(item.qaType), `${isPenaltyScored ? scoreboardHtml(item.gameResultValue, item.team) : ''}${playerHtml}`);
     }
+    // Daily-sync note (2026-08-03, ported PR d57acc2 "fix(match timeline): implement new
+    // contract change on TimelineItem for Substitution" / SBEUJE-7607): production now
+    // overrides the whole substitute incident's icon/label with a schema-driven `groupInfo`
+    // found on either the parent or a child (falls back to the incident's own icon/label if
+    // absent), and the BE-side substitute-pair filter additionally requires that groupInfo to
+    // be configured. This tool has no real event-page-schema mapping to source groupInfo
+    // from, so incidents keep using their own item.label/iconKey (equivalent to the no-
+    // groupInfo-configured fallback path) — no functional gap for the QA scenarios it builds.
     function renderSubstitute(item, direction) {
+      const isCancelled = item.gameResultTypeId === RESULT_TYPE.cancelSubstitution;
+      const subPlayers = {};
+      if (!isCancelled) {
+        (item.children.length > 0 ? [item, ...item.children] : [item]).forEach(child => {
+          if (!child.gameResultValue) return;
+          subPlayers[child.gameResultValue] = {
+            name: child.gameResultValue,
+            iconKey: child.iconKey,
+            isIncoming: child.gameResultTypeId === RESULT_TYPE.substitutionIn
+          };
+        });
+      }
       const body = `<div class="obg-football-timeline-incident-substitute-wrapper">`
-        + (item.gameResultTypeId === RESULT_TYPE.cancelSubstitution
+        + (isCancelled
           ? `<div class="obg-football-timeline-incident-substitute-cancel">${esc(item.gameResultValue)}</div>`
-          : (item.children.length > 0 ? [item, ...item.children] : [item]).map(child => {
-              if (!child.gameResultValue) return '';
-              const incoming = child.gameResultTypeId === RESULT_TYPE.substitutionIn;
-              return `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon">${tlSubstitutionChildIconHtml(child.iconKey)}</span><span class="obg-football-timeline-incident-substitute-item-player ${incoming?'in':'out'}">${esc(child.gameResultValue)}</span></div>`;
+          : Object.values(subPlayers).map(p => {
+              return `<div class="obg-football-timeline-incident-substitute-item"><span class="obg-football-timeline-incident-substitute-item-icon">${tlSubstitutionChildIconHtml(p.iconKey)}</span><span class="obg-football-timeline-incident-substitute-item-player ${p.isIncoming?'in':'out'}">${esc(p.name)}</span></div>`;
             }).join(''))
         + `</div>`;
       return host('substitute', direction, item.label, tlIconHtml('substitution'), body);
@@ -650,6 +720,12 @@
         : (parentContainsReason ? [item] : item.children).map(child => child.gameResultValue ? `<div class="obg-football-timeline-incident-review-reason">${esc(child.gameResultValue)}</div>` : '').join('');
       return host('review', reviewDirection, reviewDirection==='full'?null:item.label, tlIconHtml(item.qaType), body);
     }
+    // Daily-sync note (2026-08-03, ported PR d715df6 "Bugfix: vertical timeline crs key for
+    // injury extra time" / SBEUJE-7485): production now renders the notify suffix as
+    // `{{ item.gameResultValue }} {{ "timeline.game-minutes-added" | translate }}` instead of
+    // translating gameResultValue itself. This tool already bakes the "X min added" wording
+    // straight into gameResultValue at build time (see toTimelineItem's injuryTime branch
+    // above), so the rendered text is already equivalent — no change needed here.
     function renderNotification(item) {
       const showSuffix = [100,101,102,103,106].includes(item.gameResultTypeId) && item.gameResultValue;
       return plainHost('notify', `<div class="obg-football-timeline-incident-notify-wrapper"><div class="obg-football-timeline-incident-notify-content genos-typography-subtitle-small"><span class="obg-football-timeline-incident-notify-text">${esc(item.label)}</span>${showSuffix ? `<span>-</span><span class="obg-football-timeline-incident-notify-suffix">${esc(item.gameResultValue)}</span>` : ''}</div></div>`);
@@ -703,6 +779,15 @@
     const horizontalWrapperHtml = horizontalHtml ? `<div class="obg-match-timeline-horizontal-wrapper">${horizontalHtml}</div>` : '';
     p.innerHTML = `<div class="obg-match-timeline-wrapper">${filterBarHtml}${horizontalWrapperHtml}<div class="obg-match-timeline-vertical-wrapper"><div class="obg-vertical-timeline-container"><div class="obg-vertical-timeline-wrapper"><div class="obg-vertical-timeline-center-line"></div>${rows}</div></div></div></div>`
       + `<div class="tl-disclaimer" style="font-family:'DM Sans',sans-serif">Data-only mode now mirrors PR #20664 head adbef97a7084a21ded02b72846dd4066e586ebe3: relReference-linked children are merged under their parent, generic incidents can render with TimelineTeam=full, substitution rows honor child iconKey direction, and marker times now follow the real extra-time formatter. PR #20644's mapper was reviewed and documented near horizontalTimelineHtml for the future real wiring.</div>`;
+    // Daily-sync note (2026-07-22): checked PR #20664 (SBEUJE-7223, still open) — new commit
+    // fe18f6521f pushed today only refactors review.component's parentContainsReason() from a
+    // method(gameResultTypeId) to a computed signal reading incident().gameResultTypeId; logic
+    // (ReviewReasonIncidentIds.includes(...)) is unchanged, so renderReview()'s REVIEW_REASON_IDS
+    // check above already matches. #20504 and #20578 (now both MERGED) are unchanged since last
+    // port except a TS-type-only tweak in #20578. #20644 (SBEUJE-7296, MERGED 2026-07-21) is a
+    // single unchanged commit vs the 2026-07-20 review; match-timeline.container.ts on default
+    // branch still hardcodes MOCK_FOOTBALL_TIMELINE_DATA/MOCK_FOOTBALL_H_TIMELINE_DATA (SBEUJE-6153
+    // still the blocker) — no functional changes required this cycle.
   }
 
   // ── tlRender (Demo mode) ───────────────────────────────────────────────
@@ -1713,6 +1798,17 @@
   // silently breaks downstream once `scoreboard.statistics` turns undefined).
   // Fix: read the CURRENT spp/st (same technique as syncToMatchTab above) and
   // resend them unchanged alongside the new `gs`, so nothing else gets clobbered.
+  //
+  // Daily-sync note (2026-08-03, ported PR 5883c64 "fix(event main tabs): need to hide
+  // timeline Tab if no TimelineItems aren't present" / relates to SBEUJE-6118): production's
+  // real Timeline tab visibility gate is `isTimelineEnabled && isFootball && gameStatistics()
+  // .length > 0` (now reading the GameStatisticSelector array instead of `Object.keys
+  // (scoreboard.gameStatistics ?? {}).length`), and the tab's component is now lazy-loaded
+  // only once the tab is actually clicked (previously loaded as soon as the tab became
+  // visible). This tool's forceRealTimelineTab() below exists specifically to make the tab
+  // show/populate even when the site's own gate/lazy-load hasn't fired yet, by injecting
+  // `gs` directly via the RT channel — that workaround remains valid and unaffected by this
+  // gating/lazy-load refactor.
   function forceRealTimelineTab() {
     try {
       if (!window.obgRt || typeof window.obgRt.injectMessage !== 'function') {
