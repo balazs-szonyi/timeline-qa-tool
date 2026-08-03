@@ -1132,8 +1132,18 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.65';
+  const TL_TOOL_VERSION = 'v0.1.66';
   window._tlToolVersion = TL_TOOL_VERSION;
+  // v0.1.66 (2026-08-03): daily-sync port into Data-only renderReal(): scoreboardHtml() now
+  // takes the scoring team and highlights the home/away side that scored (PR c2694d3,
+  // SBEUJE-7484; CSS `.bold` renamed to `.highlighted` to match); horizontalTimelineHtml()'s
+  // section separator shows the live match-clock text instead of a static "HT" badge (PR
+  // d5b22aa, SBEUJE-7475); renderGoalLike/renderCardLike/renderPenalty/renderSubstitute now
+  // dedupe player rows via a gameResultValue-keyed map instead of iterating item+children as
+  // a flat list (PR 577d969, SBEUJE-7512). Remaining relevant commits from this sync
+  // (f536850, 3c718bc, d57acc2, d715df6, 67327907, 5883c64) were reviewed and documented
+  // inline as no-op/non-applicable for this standalone tool (schema- or container-level
+  // changes with no equivalent surface here).
   // v0.1.65 (2026-07-21): fixed SBEUJE-7223 bug — completing a partial incident (e.g. a
   // substitution) with only ONE of its two relReference-linked children filled in (e.g.
   // Player out but not Player in yet) used to unconditionally clear `partial`, permanently
