@@ -56,8 +56,8 @@
       : tlIconHtml('substitution');
 
   // ── Demo CSS ───────────────────────────────────────────────────────────
-  window._tqInjectDemoStyles = function() {
-    if (document.getElementById('tl-styles')) return;
+  window._tqInjectDemoStyles = function(styleRoot = document.head) {
+    if (styleRoot.querySelector('#tl-styles')) return;
     const s = document.createElement('style');
     s.id = 'tl-styles';
     s.textContent = `
@@ -131,7 +131,7 @@
       #tl-panel.tl-theme-dark .tl-sub-out,#tl-panel.tl-theme-dark .tl-sub-in{background:#353743;color:rgba(255,255,255,.7)}
       #tl-panel.tl-theme-dark .tl-disclaimer{color:#8b8d99;border-top-color:#353743}
     `;
-    document.head.appendChild(s);
+    styleRoot.appendChild(s);
   }
 
   // ── Real component CSS (ported from libs/betting/match-timeline/src/vertical-timeline/**,
@@ -145,8 +145,8 @@
   // expanded to their plain-CSS equivalent; var(--genos-*) tokens kept as-is since
   // those are global design-system custom properties already defined by the site's
   // base theme on every page, real or mock).
-  window._tqInjectRealStyles = function() {
-    if (document.getElementById('tl-real-styles')) return;
+  window._tqInjectRealStyles = function(styleRoot = document.head) {
+    if (styleRoot.querySelector('#tl-real-styles')) return;
     const s = document.createElement('style');
     s.id = 'tl-real-styles';
     s.textContent = `
@@ -243,7 +243,7 @@
       #tl-panel.tl-theme-dark .obg-timeline-stack-item{background:#181A22;border-color:#33353f}
       #tl-panel.tl-theme-dark .obg-progress-bar-line{background:#353743}
     `;
-    document.head.appendChild(s);
+    styleRoot.appendChild(s);
   };
 
   // ── Horizontal timeline — real component port (PR #20504, SBEUJE-6553) ─
@@ -799,7 +799,7 @@
     window._tqOwnRender = true;
     window.tlSetFilter = function(f) { window._tlFilter=f; window.tlRender(); };
     window.tlRender = function() {
-      const p = document.getElementById('tl-panel');
+      const p = window._tlPanelEl || document.getElementById('tl-panel');
       if (!p) return;
       p.classList.toggle('tl-theme-dark', window._tlIsDarkTheme());
       // "Data only" mode now renders the REAL ported vertical-timeline component markup
@@ -1132,8 +1132,15 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.67';
+  const TL_TOOL_VERSION = 'v0.1.68';
   window._tlToolVersion = TL_TOOL_VERSION;
+  // v0.1.68 (2026-09-11): the current sportsbook MFE renders inside nested open
+  // shadow roots (site-root_default > router-fabric_outlet >
+  // gaming-sportsbook_switcher > sb-xp-sportsbook-app). Native document queries
+  // cannot see the event DOM there, so v0.1.67 still reported a missing main-tabs
+  // container. Traverse open shadow roots, inject styles into the event's own root,
+  // and keep direct references to injected nodes so rendering/cleanup also works
+  // across the shadow boundary.
   // v0.1.67 (2026-09-11): fix compact event-overlay injection when the page keeps
   // multiple event widgets in the DOM.  The old document.querySelector() picked the
   // first `obg-m-event-main-tabs-container`, which can be a hidden/stale widget, and
@@ -1535,6 +1542,25 @@
 
   // ── Helpers ────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
+  function deepRoots(startRoot = document) {
+    const roots = [startRoot];
+    for (let i = 0; i < roots.length; i++) {
+      roots[i].querySelectorAll('*').forEach(el => {
+        if (el.shadowRoot) roots.push(el.shadowRoot);
+      });
+    }
+    return roots;
+  }
+  function deepQuerySelectorAll(selector, startRoot = document) {
+    return deepRoots(startRoot).flatMap(root => Array.from(root.querySelectorAll(selector)));
+  }
+  function deepQuerySelector(selector, startRoot = document) {
+    for (const root of deepRoots(startRoot)) {
+      const match = root.querySelector(selector);
+      if (match) return match;
+    }
+    return null;
+  }
 
   function tlStatus(msg, err) {
     const el = $('tl-qa-status');
@@ -1738,7 +1764,7 @@
       // how many other events/matches are listed elsewhere on the page.
       const selectors = ['.obg-m-event-header-participant-label', '.obg-event-info-participant-label'];
       for (const sel of selectors) {
-        const els = document.querySelectorAll(sel);
+        const els = deepQuerySelectorAll(sel);
         if (els.length >= 2) {
           window._tlHomeTeam = els[0].textContent.trim();
           window._tlAwayTeam = els[1].textContent.trim();
@@ -2438,12 +2464,12 @@
       .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height))[0]?.el || null;
   }
   function findVisibleEventRoot() {
-    return largestVisibleElement(document.querySelectorAll('obg-m-event-container, [test-id="event"]'));
+    return largestVisibleElement(deepQuerySelectorAll('obg-m-event-container'));
   }
   function findVisibleMainTabs(eventRootEl) {
     const selector = 'obg-m-event-main-tabs-container, [test-id="event.main-tabs"]';
     const scoped = eventRootEl && largestVisibleElement(eventRootEl.querySelectorAll(selector));
-    return scoped || largestVisibleElement(document.querySelectorAll(selector));
+    return scoped || largestVisibleElement(deepQuerySelectorAll(selector));
   }
   // Some matches render `obg-m-event-main-tabs-container` with only the score header
   // and no Statistics/Stream tabs (nothing to switch between), so Angular never renders
@@ -2507,7 +2533,7 @@
     // unrelated to the real ScoreboardSelector.getGameStatistics/EventPageSchemaSelector.getTimelineSchema
     // pipeline) — injecting alongside it would create a confusing duplicate tab and any
     // "test result" from our mock would NOT reflect the real implementation's behaviour.
-    if (document.querySelector('sbb2b-match-timeline-container')) {
+    if (deepQuerySelector('sbb2b-match-timeline-container')) {
       tlStatus('⚠ Real Timeline feature detected on this page (sbb2b-match-timeline-container) — this mock tool is for pre-release QA only and must not be used once the real feature is deployed here', true);
       return;
     }
@@ -2526,6 +2552,7 @@
     // into the wrong place on the page (looks like nothing happened).
     const eventRootEl = findVisibleEventRoot();
     const mainTabsEl = findVisibleMainTabs(eventRootEl);
+    const eventDomRoot = mainTabsEl && mainTabsEl.getRootNode();
     let scrollerEl = mainTabsEl && mainTabsEl.querySelector('[test-id="scroller-content"]');
     // Some events (confirmed on sbplayground1 test env) have only a single "Match" view
     // and no Statistics/Stream tab — Angular then never renders a tab-bar/scroller at all
@@ -2573,13 +2600,13 @@
     window._tlFilter    = 'all';
     window._tlInjected  = true;
 
-    if (isDemo) window._tqInjectDemoStyles();
-    else window._tqInjectRealStyles();
+    if (isDemo) window._tqInjectDemoStyles(eventDomRoot || document.head);
+    else window._tqInjectRealStyles(eventDomRoot || document.head);
     window._tqInstallTlRender();
 
 
     // Tab button (same for both modes)
-    if (!document.getElementById('tl-tab-btn')) {
+    if (!deepQuerySelector('#tl-tab-btn')) {
       const tabBtn = document.createElement('button');
       tabBtn.id = 'tl-tab-btn';
       // Real tabs use a single shared `.obg-tabs-underline` element (4px, translateX+scaleX)
@@ -2607,7 +2634,7 @@
         // Synthetic "Match" tab (single-view events only, see ensureMainTabsScroller) needs
         // its own active state kept in sync — real obg-tab-label CSS handles the visual
         // (orange text/underline) via the `.active` class, same as any real tab.
-        const matchTab = document.getElementById('tl-synth-match-tab');
+        const matchTab = mainTabsEl.querySelector('#tl-synth-match-tab');
         if (matchTab) matchTab.classList.toggle('active', !active);
       };
 
@@ -2626,8 +2653,9 @@
         const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
         Array.from(ph.children).forEach(c => { if (c.id !== 'tl-panel') c.style.display = 'none'; });
         if (matchHeaderEl) matchHeaderEl.style.display = 'none';
-        let tp = document.getElementById('tl-panel');
+        let tp = panelHostEl.querySelector('#tl-panel');
         if (!tp) { tp = document.createElement('div'); tp.id = 'tl-panel'; tp.style.cssText = 'width:100%;min-height:200px'; ph.appendChild(tp); }
+        window._tlPanelEl = tp;
         tp.style.display = 'block';
         if (typeof window.tlRender === 'function') window.tlRender();
         setActive(true);
@@ -2636,13 +2664,13 @@
       // Synthetic "Match" tab (single-view events only) needs its own click handler to
       // switch back — it's a plain element we created, not a real Angular tab, so nothing
       // else would otherwise restore the match view when it's clicked.
-      const synthMatchTab = document.getElementById('tl-synth-match-tab');
+      const synthMatchTab = mainTabsEl.querySelector('#tl-synth-match-tab');
       if (synthMatchTab) {
         synthMatchTab.addEventListener('click', () => {
           const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
           if (matchHeaderEl) matchHeaderEl.style.display = '';
-          const tp = document.getElementById('tl-panel');
+          const tp = panelHostEl.querySelector('#tl-panel');
           if (tp) tp.style.display = 'none';
           setActive(false);
         });
@@ -2657,13 +2685,13 @@
       // that: only switch away when the click actually lands on another tab inside `scrollerEl`,
       // never on a generic outside click (previously this fired on ANY outside click, which
       // incorrectly bounced the user back to Match whenever they clicked away from the tab).
-      document.addEventListener('click', (e) => {
+      (eventDomRoot || document).addEventListener('click', (e) => {
         if (tabBtn.classList.contains('tl-active') && !tabBtn.contains(e.target)) {
           if (!scrollerEl.contains(e.target)) return;
           const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
           if (matchHeaderEl) matchHeaderEl.style.display = '';
-          const tp = document.getElementById('tl-panel');
+          const tp = panelHostEl.querySelector('#tl-panel');
           if (tp) tp.style.display = 'none';
           setActive(false);
         }
@@ -2671,12 +2699,13 @@
     }
 
     // Panel container injected as child of visible panel content
-    if (!document.getElementById('tl-panel')) {
+    if (!panelHostEl.querySelector('#tl-panel')) {
       const tlPanel = document.createElement('div');
       tlPanel.id = 'tl-panel';
       tlPanel.style.cssText = 'width:100%;min-height:200px;display:none';
       panelHostEl.appendChild(tlPanel);
     }
+    window._tlPanelEl = panelHostEl.querySelector('#tl-panel');
 
     detectTeamNames();
     window.tlRender();
@@ -2690,15 +2719,18 @@
   $('tl-clear-btn').addEventListener('click', () => {
     window._tlIncidents = [];
     window._tlInjected  = false;
-    ['tl-tab-btn','tl-panel','tl-styles'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+    ['tl-tab-btn','tl-panel','tl-styles','tl-real-styles'].forEach(id => {
+      deepQuerySelectorAll(`#${id}`).forEach(el => el.remove());
+    });
+    window._tlPanelEl = null;
     // Remove our synthetic tab-bar host too (only present when the real event had no
     // Statistics/Stream tabs and we had to build our own scroller to attach into).
-    document.querySelectorAll('.tl-synth-scroller').forEach(el => el.remove());
+    deepQuerySelectorAll('.tl-synth-scroller').forEach(el => el.remove());
     // Restore the score/video header too, in case it was hidden while Timeline was active
     // (single-view events only — see matchHeaderEl in the inject handler).
-    document.querySelectorAll('.obg-m-event-main-tabs-custom-panel-header').forEach(el => el.style.display = '');
+    deepQuerySelectorAll('.obg-m-event-main-tabs-custom-panel-header').forEach(el => el.style.display = '');
     // Restore panel content children
-    document.querySelectorAll('.obg-uiuplift-panel-content').forEach(el => {
+    deepQuerySelectorAll('.obg-uiuplift-panel-content').forEach(el => {
       Array.from(el.children).forEach(c => c.style.display = '');
     });
     $('tl-inject-btn').textContent = window._tqMode === 'demo' ? 'Inject Demo Tab' : 'Inject Tab';
