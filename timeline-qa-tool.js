@@ -1132,8 +1132,14 @@
  * Inject via evaluate_script (DevTools MCP) on any Betsson live event page.
  */
 (function () {
-  const TL_TOOL_VERSION = 'v0.1.66';
+  const TL_TOOL_VERSION = 'v0.1.67';
   window._tlToolVersion = TL_TOOL_VERSION;
+  // v0.1.67 (2026-09-11): fix compact event-overlay injection when the page keeps
+  // multiple event widgets in the DOM.  The old document.querySelector() picked the
+  // first `obg-m-event-main-tabs-container`, which can be a hidden/stale widget, and
+  // then reported that the visibly open event was a listing page.  Resolve the largest
+  // visible event root first, scope all tab/panel lookups to it, and report the actual
+  // missing host instead of the misleading listing-page-only error.
   // v0.1.66 (2026-08-03): daily-sync port into Data-only renderReal(): scoreboardHtml() now
   // takes the scoring team and highlights the home/away side that scored (PR c2694d3,
   // SBEUJE-7484; CSS `.bold` renamed to `.highlighted` to match); horizontalTimelineHtml()'s
@@ -2419,11 +2425,25 @@
   // whenever the event's own panel-content is temporarily empty (height:0).
   function findEventPanelContainer(scrollerEl) {
     let el = scrollerEl;
-    for (let i = 0; i < 15 && el; i++) {
+    while (el) {
       if (el.classList && el.classList.contains('obg-uiuplift-panel-container')) return el;
       el = el.parentElement;
     }
     return null;
+  }
+  function largestVisibleElement(elements, minWidth = 100) {
+    return Array.from(elements)
+      .map(el => ({ el, rect: el.getBoundingClientRect() }))
+      .filter(({ rect }) => rect.width > minWidth && rect.height > 0)
+      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height))[0]?.el || null;
+  }
+  function findVisibleEventRoot() {
+    return largestVisibleElement(document.querySelectorAll('obg-m-event-container, [test-id="event"]'));
+  }
+  function findVisibleMainTabs(eventRootEl) {
+    const selector = 'obg-m-event-main-tabs-container, [test-id="event.main-tabs"]';
+    const scoped = eventRootEl && largestVisibleElement(eventRootEl.querySelectorAll(selector));
+    return scoped || largestVisibleElement(document.querySelectorAll(selector));
   }
   // Some matches render `obg-m-event-main-tabs-container` with only the score header
   // and no Statistics/Stream tabs (nothing to switch between), so Angular never renders
@@ -2468,15 +2488,13 @@
     header.insertBefore(wrapper, header.firstChild);
     return content;
   }
-  function findVisiblePanelContent(scrollerEl) {
-    const scope = (scrollerEl && findEventPanelContainer(scrollerEl)) || document;
+  function findVisiblePanelContent(scrollerEl, eventRootEl) {
+    const scope = (scrollerEl && findEventPanelContainer(scrollerEl)) || eventRootEl;
+    if (!scope) return null;
     const scoped = Array.from(scope.querySelectorAll('.obg-uiuplift-panel-content'))
       .filter(el => el.getBoundingClientRect().width > 100);
     if (scoped.length) return scoped[0];
-    // Fallback (old behaviour) only if scoping failed entirely
-    return Array.from(document.querySelectorAll('.obg-uiuplift-panel-content'))
-      .filter(el => { const r = el.getBoundingClientRect(); return r.width > 100 && r.height > 100; })
-      .sort((a, b) => { const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect(); return (rb.width*rb.height)-(ra.width*ra.height); })[0] || null;
+    return null;
   }
 
   $('tl-inject-btn').addEventListener('click', () => {
@@ -2506,7 +2524,8 @@
     // nav tab bar ("Matches | Outrights | Standings") renders *before* the event's own tab bar
     // in DOM order and would otherwise be picked instead, silently injecting our Timeline tab
     // into the wrong place on the page (looks like nothing happened).
-    const mainTabsEl = document.querySelector('obg-m-event-main-tabs-container');
+    const eventRootEl = findVisibleEventRoot();
+    const mainTabsEl = findVisibleMainTabs(eventRootEl);
     let scrollerEl = mainTabsEl && mainTabsEl.querySelector('[test-id="scroller-content"]');
     // Some events (confirmed on sbplayground1 test env) have only a single "Match" view
     // and no Statistics/Stream tab — Angular then never renders a tab-bar/scroller at all
@@ -2518,9 +2537,7 @@
     // minimal real-markup tab-bar host inside the container's own header so the tab still
     // lands in the correct widget even when it currently has zero real tabs.
     if (!scrollerEl && mainTabsEl) scrollerEl = ensureMainTabsScroller(mainTabsEl);
-    // True last resort: no main-tabs container on the page at all (not a match/event page).
-    if (!scrollerEl && !mainTabsEl) scrollerEl = document.querySelector('[test-id="scroller-content"]');
-    const panelHostEl = findVisiblePanelContent(scrollerEl);
+    const panelHostEl = findVisiblePanelContent(scrollerEl, eventRootEl);
     // In the single-view case (no real Statistics/Stream tabs), the score/video header
     // lives in `.obg-m-event-main-tabs-custom-panel-header`, a SIBLING of the panel-content
     // we render our Timeline content into — NOT a child of it (unlike the real multi-tab
@@ -2530,13 +2547,15 @@
     // multi-tab case since that markup doesn't exist there.
     const matchHeaderEl = mainTabsEl && mainTabsEl.querySelector('.obg-m-event-main-tabs-custom-panel-header');
     if (!scrollerEl || !panelHostEl) {
-      tlStatus('⚠ No event tab bar found — navigate to a specific match page first (not a listing/odds page)', true);
+      const missingHost = !mainTabsEl ? 'event main-tabs container' : !scrollerEl ? 'event tab scroller' : 'event panel content';
+      const eventHint = getEventIdFromPage() ? 'The event is open, but its current layout is unsupported.' : 'Open a specific match first.';
+      tlStatus(`⚠ Timeline injection unavailable: ${missingHost} not found. ${eventHint}`, true);
       // Also flash the button itself so the error is impossible to miss, regardless
       // of whether the user notices the small status line at the bottom of the panel.
       const injectBtn = $('tl-inject-btn');
       const prevText = injectBtn.textContent;
       const prevBg = injectBtn.style.background;
-      injectBtn.textContent = '⚠ Navigate to match page first';
+      injectBtn.textContent = '⚠ Event layout not supported';
       injectBtn.style.background = '#c0392b';
       setTimeout(() => { injectBtn.textContent = prevText; injectBtn.style.background = prevBg; }, 3000);
       return;
@@ -2604,7 +2623,7 @@
       }
 
       tabBtn.addEventListener('click', () => {
-        const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
+        const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
         Array.from(ph.children).forEach(c => { if (c.id !== 'tl-panel') c.style.display = 'none'; });
         if (matchHeaderEl) matchHeaderEl.style.display = 'none';
         let tp = document.getElementById('tl-panel');
@@ -2620,7 +2639,7 @@
       const synthMatchTab = document.getElementById('tl-synth-match-tab');
       if (synthMatchTab) {
         synthMatchTab.addEventListener('click', () => {
-          const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
+          const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
           if (matchHeaderEl) matchHeaderEl.style.display = '';
           const tp = document.getElementById('tl-panel');
@@ -2641,7 +2660,7 @@
       document.addEventListener('click', (e) => {
         if (tabBtn.classList.contains('tl-active') && !tabBtn.contains(e.target)) {
           if (!scrollerEl.contains(e.target)) return;
-          const ph = findVisiblePanelContent(scrollerEl) || panelHostEl;
+          const ph = findVisiblePanelContent(scrollerEl, eventRootEl) || panelHostEl;
           Array.from(ph.children).forEach(c => c.style.display = '');
           if (matchHeaderEl) matchHeaderEl.style.display = '';
           const tp = document.getElementById('tl-panel');
