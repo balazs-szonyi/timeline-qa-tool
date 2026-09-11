@@ -1,0 +1,14 @@
+{
+  "name": "timeline-qa-tool",
+  "private": true,
+  "version": "0.1.69",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test:contract": "node --test tests/*.test.js",
+    "test": "npm run test:contract && npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}

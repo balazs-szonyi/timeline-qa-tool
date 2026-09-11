@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Timeline QA Tool</title>
+  <title>Timeline QA Tool v0.1.69</title>
   <style>
     body {
       margin: 0;
@@ -36,9 +36,10 @@
 <body>
   <main>
     <h1>Timeline QA Tool</h1>
-    <p>This repository publishes the bookmarklet-injectable Timeline QA tool script for manual testing.</p>
+    <p>Bookmarklet-loadable normalized realtime-feed simulator for manual Timeline testing.</p>
     <p><a class="button" href="./timeline-qa-tool.js">Open timeline-qa-tool.js</a></p>
-    <p>Use this GitHub Pages site as a stable static entry point for the tool asset.</p>
+    <p>Load the script in the sportsbook page's main context. The tool only injects normalized realtime records; it does not render or force a Timeline tab.</p>
+    <p>Before loading the page, use a DevTools Local Override for <code>config.json</code> to set <code>incidentsTimeline.enabled</code> to the boolean <code>true</code>. The tool's Expose action reloads with the two exposed-state query parameters; restart the bookmarklet manually afterwards.</p>
     <p>Script path: <code>/timeline-qa-tool.js</code></p>
   </main>
 </body>
